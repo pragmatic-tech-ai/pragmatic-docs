@@ -1,0 +1,61 @@
+name: Process docs-removal tickets
+
+# Runs GitHub Copilot CLI to clear the docs-removal backlog — remove the flagged
+# text, commit to main (which rebuilds Pages), and close each ticket. The
+# organization must allow Copilot CLI billed to the organization.
+on:
+  # Fire as soon as a ticket is filed (the select-to-ticket UI applies the label).
+  issues:
+    types: [labeled]
+  # Manual run + a daily sweep as a safety net.
+  workflow_dispatch:
+  schedule:
+    - cron: "17 6 * * *"
+
+# Serialize: never let two runs push to main at once.
+concurrency:
+  group: docs-removal
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  issues: write
+  copilot-requests: write
+
+jobs:
+  process:
+    runs-on: ubuntu-latest
+    # On the issues event, only run for our label; other triggers always run.
+    if: >-
+      github.event_name != 'issues' ||
+      github.event.label.name == 'docs-removal'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install GitHub Copilot CLI
+        run: npm install -g @github/copilot
+
+      - name: Configure git identity
+        run: |
+          git config user.name "Eugene Napryaglo"
+          git config user.email "evgen.napryaglo@gmail.com"
+
+      - name: Run the docs-removal agent
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >-
+          copilot
+          --agent docs-removal
+          --prompt "Process every open docs-removal ticket following the docs-removal agent instructions."
+          --allow-tool='shell(gh:*), shell(git:*), read, write'
+          --no-ask-user
+          -s
