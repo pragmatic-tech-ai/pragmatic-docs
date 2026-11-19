@@ -69,8 +69,8 @@ listener's disposal (which a well-behaved owner does at teardown) releases the
 setting subscription. What remains is the framework's *pre-existing* "listener
 never disposed" responsibility, no worse than any other subscription.
 
-In the first production use — `Diagram.DefaultIconWidth/Height` bound from arch
-node icon templates via `$Self.(Diagram.DefaultIconWidth)` — each visible node's
+In the first production use — `Board.DefaultIconWidth/Height` bound from arch
+node icon templates via `$Self.(Board.DefaultIconWidth)` — each visible node's
 binding is that `changed` listener, so the node subscribes to the setting
 directly, reacts, and releases when the node (and its binding) is torn down.
 

@@ -1,7 +1,7 @@
-# Diagram Design Tokens — complete catalog (Mural framework)
+# Board Design Tokens — complete catalog (Mural framework)
 
-Goal: a single list of every visual token needed to render the framework diagram
-surface with **zero hardcoded visual values**. Scope: Mural framework diagram only
+Goal: a single list of every visual token needed to render the framework board
+surface with **zero hardcoded visual values**. Scope: Mural framework board only
 (Figure/shape, connector, group, callout, text, editing chrome, guides, rulers,
 toolbox, inspector). Plexus arch visuals are out of scope (follow-up).
 
@@ -9,25 +9,25 @@ Two token layers already exist:
 - **Theme layer** — `@`-refs resolved from the app resource dictionary
   (`@Primary`, `@Surface`, `@OnSurface`, `@OnSurfaceVariant`, `@OutlineVariant`,
   typography `@TitleSmall` / `@BodySmall`).
-- **`DiagramSettings`** — the diagram's own tunable-constant catalog
-  (`src/framework/diagram/diagram-settings.ts`): user-overridable, numeric + color,
+- **`BoardSettings`** — the board's own tunable-constant catalog
+  (`src/framework/board/board-settings.ts`): user-overridable, numeric + color,
   grouped Shapes / Connectors / Chrome / Toolbox / Rulers.
 
 Status legend: **✓ theme** = existing `@`-token · **✓ settings** = existing
-`DiagramSettings.X()` · **● GAP** = hardcoded, no token yet.
+`BoardSettings.X()` · **● GAP** = hardcoded, no token yet.
 
 ---
 
-## Status — theme-adaptive diagram surface (IMPLEMENTED, mural 0.18.0)
+## Status — theme-adaptive board surface (IMPLEMENTED, mural 0.18.0)
 
 Shipped in `mural@0.18.0` + Plexus `^0.18.0`. Live-verified in **both** schemes
-(diagram-3, 22 arch nodes): light canvas `#fdfdfd` w/ dark labels; dark canvas
+(board-3, 22 arch nodes): light canvas `#fdfdfd` w/ dark labels; dark canvas
 `#2a2a2e` w/ light labels; page borders, connectors, node ink all adapt.
 
-**New theme token** — `@DiagramCanvas` (Material catalog, `material.mu`):
-light `#FDFDFD`, dark `#2A2A2E`. The dedicated diagram drawing-surface color.
+**New theme token** — `@BoardCanvas` (Material catalog, `material.mu`):
+light `#FDFDFD`, dark `#2A2A2E`. The dedicated board drawing-surface color.
 
-**Tunable-with-theme-defaults model** (`diagram-settings.ts`): five `DiagramSettings`
+**Tunable-with-theme-defaults model** (`board-settings.ts`): five `BoardSettings`
 colors now seed an *undefined* definition default, so — absent a user override —
 `color()` resolves a live scheme token via `themeBrush(token)` (app-level
 `Application.Resources.Resolve`); the compiled hex survives only as the no-theme
@@ -38,18 +38,18 @@ default. Linked keys (`THEME_LINK`):
 - `RulerHoverFill` → `@Primary` wash (α≈41)
 
 **Surface wiring** (dynamic resources → re-paint live on scheme swap):
-- **Pages** (the paper): Plexus `DiagramCanvasPanel` `PaginatedCanvas.PaperBrush =
-  @DiagramCanvas`, `PageBorderBrush = @OutlineVariant`. (Root cause of the old white
+- **Pages** (the paper): Plexus `BoardCanvasPanel` `PaginatedCanvas.PaperBrush =
+  @BoardCanvas`, `PageBorderBrush = @OutlineVariant`. (Root cause of the old white
   canvas: `PaginatedCanvas` hardcodes `#ffffff` paper — themed at the app wiring
   point, the layer that instantiates it.)
 - **Desk** (pasteboard behind/around pages, viewport-filling): mural
-  `diagram.template.mu` `PART_CanvasBg` Border `Fill = @DiagramCanvas`.
+  `board.template.mu` `PART_CanvasBg` Border `Fill = @BoardCanvas`.
 - **Arch-node caption ink** (Plexus): `#000000` → `@OnSurface`.
 - **Selection / halo**: stay `@Primary` (correct now the canvas adapts).
 
-Deferred: paper fill is not yet a `DiagramSettings`-tunable key (theme-adaptive via
+Deferred: paper fill is not yet a `BoardSettings`-tunable key (theme-adaptive via
 the token only); mural `PaginatedCanvas` keeps its generic `#ffffff` default for
-non-diagram consumers (the Diagrammer demo); callout leader `#64748b` still inline.
+non-board consumers (the Boardmer demo); callout leader `#64748b` still inline.
 
 ---
 
@@ -58,19 +58,19 @@ non-diagram consumers (the Diagrammer demo); callout leader `#64748b` still inli
 ### 1a. Node & content colors
 | Token | Value | Source | Status |
 |---|---|---|---|
-| Shape default fill | `#bfdbfe` | `DiagramSettings.ShapeDefaultFill` | ✓ settings |
-| Shape default stroke | `#1976d2` | `DiagramSettings.ShapeDefaultStroke` | ✓ settings |
+| Shape default fill | `#bfdbfe` | `BoardSettings.ShapeDefaultFill` | ✓ settings |
+| Shape default stroke | `#1976d2` | `BoardSettings.ShapeDefaultStroke` | ✓ settings |
 | Connector default stroke | `#475569` | `connector.ts:70` (`DEFAULT_STROKE_BRUSH`) | ● GAP |
 | Label default ink | `Color.Black` | `shape-text.ts:74` | ● GAP |
 | Text-node fill | `#00000000` | `text-node.ts:7` | ● GAP |
 | Text-node stroke | `#94a3b8` | `text-node.ts:8` | ● GAP |
-| Callout leader color | `#64748b` | `diagram.template.mu:72` | ● GAP |
+| Callout leader color | `#64748b` | `board.template.mu:72` | ● GAP |
 | Cap preview ink | `#64748b` | `caps/connector-cap-options.ts:31` | ● GAP |
 
 ### 1b. Selection & editing-chrome colors — **the main gap**
 | Token | Value | Source | Status |
 |---|---|---|---|
-| Group selection outline | `@Primary` | `diagram.template.mu:179` | ✓ theme |
+| Group selection outline | `@Primary` | `board.template.mu:179` | ✓ theme |
 | Selection bbox outline | `#1976d2` | `basic/selection-bounds-adorner.ts:93` | ● GAP |
 | Resize handle fill | `#ffffff` | `basic/selection-bounds-adorner.ts:94` | ● GAP |
 | Alignment (snap) guide | `#1976d2` | `behaviors/alignment-guides-adorner.ts:28` | ● GAP |
@@ -86,13 +86,13 @@ non-diagram consumers (the Diagrammer demo); callout leader `#64748b` still inli
 ### 1c. Guides, rulers, toolbox colors (already covered)
 | Token | Value | Source | Status |
 |---|---|---|---|
-| Persistent guide | `#e5484d` | `DiagramSettings.PersistentGuideColor` | ✓ settings |
-| Selected guide | `#f59e0b` | `DiagramSettings.PersistentGuideSelectedColor` | ✓ settings |
-| Guide preview | `#e5484d` | `DiagramSettings.PersistentGuidePreviewColor` | ✓ settings |
-| Ruler fill | `#f3f4f6` | `DiagramSettings.RulerFill` | ✓ settings |
-| Ruler tick color | `#6b7280` | `DiagramSettings.RulerTickColor` | ✓ settings |
-| Ruler hover fill | `#dbeafe` | `DiagramSettings.RulerHoverFill` | ✓ settings |
-| Toolbox preview fill | `#1976d2` | `DiagramSettings.ToolboxPreviewFill` | ✓ settings |
+| Persistent guide | `#e5484d` | `BoardSettings.PersistentGuideColor` | ✓ settings |
+| Selected guide | `#f59e0b` | `BoardSettings.PersistentGuideSelectedColor` | ✓ settings |
+| Guide preview | `#e5484d` | `BoardSettings.PersistentGuidePreviewColor` | ✓ settings |
+| Ruler fill | `#f3f4f6` | `BoardSettings.RulerFill` | ✓ settings |
+| Ruler tick color | `#6b7280` | `BoardSettings.RulerTickColor` | ✓ settings |
+| Ruler hover fill | `#dbeafe` | `BoardSettings.RulerHoverFill` | ✓ settings |
+| Toolbox preview fill | `#1976d2` | `BoardSettings.ToolboxPreviewFill` | ✓ settings |
 
 > **Palette observation:** the hardcoded chrome uses *three different blues*
 > (`#1976d2`, `#2196f3`, `#6750A4`), *two oranges/red* (`#ff9800`, `#ff5722`), and
@@ -106,22 +106,22 @@ non-diagram consumers (the Diagrammer demo); callout leader `#64748b` still inli
 ## 2. Stroke widths
 | Token | Value | Source | Status |
 |---|---|---|---|
-| Shape stroke width | `1.5` | `DiagramSettings.ShapeStrokeWidth` | ✓ settings |
-| Connector stroke width | `1.5` | `DiagramSettings.ConnectorStrokeWidth` | ✓ settings |
+| Shape stroke width | `1.5` | `BoardSettings.ShapeStrokeWidth` | ✓ settings |
+| Connector stroke width | `1.5` | `BoardSettings.ConnectorStrokeWidth` | ✓ settings |
 | Text-node stroke width | `1` | `text-node.ts:8` | ● GAP |
-| Callout leader width | `1.5` | `diagram.template.mu:72` | ● GAP |
+| Callout leader width | `1.5` | `board.template.mu:72` | ● GAP |
 | Cap preview stroke width | `1.5` | `caps/connector-cap-options.ts:32` | ● GAP |
-| Group selection outline width | `1` | `diagram.template.mu:184` | ● GAP |
-| Text-block stem width | `1` | `DiagramSettings.TextStemWidth` | ✓ settings |
-| Alignment guide thickness | `1` | `DiagramSettings.GuideThickness` | ✓ settings |
-| Persistent guide thickness | `1` | `DiagramSettings.PersistentGuideThickness` | ✓ settings |
+| Group selection outline width | `1` | `board.template.mu:184` | ● GAP |
+| Text-block stem width | `1` | `BoardSettings.TextStemWidth` | ✓ settings |
+| Alignment guide thickness | `1` | `BoardSettings.GuideThickness` | ✓ settings |
+| Persistent guide thickness | `1` | `BoardSettings.PersistentGuideThickness` | ✓ settings |
 
 ---
 
 ## 3. Opacities
 | Token | Value | Source | Status |
 |---|---|---|---|
-| Hover halo opacity | `0.45` | `DiagramSettings.HoverHaloOpacity` | ✓ settings |
+| Hover halo opacity | `0.45` | `BoardSettings.HoverHaloOpacity` | ✓ settings |
 | Guide preview opacity | `0.4` | `guides/persistent-guides-adorner.ts:17` | ● GAP |
 
 ---
@@ -131,10 +131,10 @@ non-diagram consumers (the Diagrammer demo); callout leader `#64748b` still inli
 ### 4a. Shape / node / text
 | Token | Value | Source | Status |
 |---|---|---|---|
-| Shape default size | `80` | `DiagramSettings.ShapeDefaultSize` | ✓ settings |
-| Shape min resize | `8` | `DiagramSettings.ShapeMinResize` | ✓ settings |
-| Shape label margin | `8` | `DiagramSettings.ShapeLabelMargin` | ✓ settings |
-| Default label font size | `12` | `DiagramSettings.TextDefaultFontSize` | ✓ settings |
+| Shape default size | `80` | `BoardSettings.ShapeDefaultSize` | ✓ settings |
+| Shape min resize | `8` | `BoardSettings.ShapeMinResize` | ✓ settings |
+| Shape label margin | `8` | `BoardSettings.ShapeLabelMargin` | ✓ settings |
+| Default label font size | `12` | `BoardSettings.TextDefaultFontSize` | ✓ settings |
 | Label default padding | `2` | `shape-text.ts:231` | ● GAP |
 | Text-node default width | `120` | `text-node.ts:9` | ● GAP |
 | Text-node default height | `44` | `text-node.ts:10` | ● GAP |
@@ -147,7 +147,7 @@ non-diagram consumers (the Diagrammer demo); callout leader `#64748b` still inli
 ### 4c. Caps
 | Token | Value | Source | Status |
 |---|---|---|---|
-| Default cap scale (source/target) | `0.8` | `diagram.template.mu:210-211` | ● GAP |
+| Default cap scale (source/target) | `0.8` | `board.template.mu:210-211` | ● GAP |
 | Filled-arrow cap size / inset | `12 / 12` | `caps/caps.template.mu:36` | ● GAP |
 | Open-arrow cap size | `12 × 6` | `caps/caps.template.mu:30` | ● GAP |
 | Circle cap radius | `6` | `caps/caps.template.mu:43,54` | ● GAP |
@@ -170,20 +170,20 @@ non-diagram consumers (the Diagrammer demo); callout leader `#64748b` still inli
 ## 5. Typography
 | Token | Value | Source | Status |
 |---|---|---|---|
-| Label font size | `12` | `DiagramSettings.TextDefaultFontSize` | ✓ settings |
+| Label font size | `12` | `BoardSettings.TextDefaultFontSize` | ✓ settings |
 | Label ink | `Color.Black` | `shape-text.ts:74` | ● GAP (see 1a) |
-| Inspector section title | `@TitleSmall` | `diagram.template.mu` | ✓ theme |
-| Inspector field label | `@BodySmall` | `diagram.template.mu` | ✓ theme |
-| Inspector rail label | `@TitleSmall` | `diagram.template.mu:323` | ✓ theme |
+| Inspector section title | `@TitleSmall` | `board.template.mu` | ✓ theme |
+| Inspector field label | `@BodySmall` | `board.template.mu` | ✓ theme |
+| Inspector rail label | `@TitleSmall` | `board.template.mu:323` | ✓ theme |
 
 > Font *family* and *weight* for shape labels come from `ShapeText` DP defaults;
-> not currently surfaced as diagram tokens — candidate if label typography should
+> not currently surfaced as board tokens — candidate if label typography should
 > be themeable.
 
 ---
 
 ## 6. Inspector-pane spacing (Format Shape / Size & Position)
-A self-contained family of hardcoded layout values in `diagram.template.mu`. Lower
+A self-contained family of hardcoded layout values in `board.template.mu`. Lower
 priority than the canvas visuals but part of "100%".
 | Token | Value | Lines |
 |---|---|---|
@@ -210,7 +210,7 @@ priority than the canvas visuals but part of "100%".
 | Inspector spacing | — (theme colors only) | ~8 |
 
 **Dimensions are ~95% done; the real work is colors.** The cleanest path is to add
-a semantic **chrome color** group to `DiagramSettings` (mirroring the existing
+a semantic **chrome color** group to `BoardSettings` (mirroring the existing
 `PersistentGuideColor` pattern), rationalized to a small palette rather than the
 current ad-hoc literals.
 
@@ -221,13 +221,13 @@ current ad-hoc literals.
 `@Primary` resolves to Material purple (`#6750A4` light / `#D0BCFF` dark). Decisions:
 selection accent → **live `@Primary`** (theme-adaptive); connector handles → **keep 3**.
 
-**Theme-resolved (live `@Primary`, adapts light/dark — resolved via `TryFindResource`/DynamicResource, not a fixed DiagramSettings color):**
+**Theme-resolved (live `@Primary`, adapts light/dark — resolved via `TryFindResource`/DynamicResource, not a fixed BoardSettings color):**
 | Semantic token | Replaces (uses) |
 |---|---|
 | `@Primary` (selection accent) | selection bbox outline, group outline (already), resize-handle stroke, text-block accent/stem, alignment/snap guide — all `#1976d2` → `@Primary` |
 | `@Primary` (hover halo) | connector hover halo `#6750A4` (it already *is* the primary) |
 
-**New fixed diagram color tokens (functional palette — `DiagramSettings`, hex defaults):**
+**New fixed board color tokens (functional palette — `BoardSettings`, hex defaults):**
 | Token key | Default | Replaces |
 |---|---|---|
 | `ChromeHandleFill` | `#ffffff` | resize handles + text-block grips |
@@ -245,7 +245,7 @@ duplicates collapse, and the hover-halo purple is recognized as `@Primary`.
 
 ### Implemented (2026-08-21)
 
-New `DiagramSettings` keys + accessors: `ChromeHandleFill`, `ChromeConnectorEndpoint`,
+New `BoardSettings` keys + accessors: `ChromeHandleFill`, `ChromeConnectorEndpoint`,
 `ChromeConnectorHandle`, `ChromeConnectorSegment`, `ChromeNeutralInk`,
 `ConnectorDefaultStroke`, `ShapeLabelInk`, `TextNodeFill`, `TextNodeStroke`.
 
@@ -253,16 +253,16 @@ Rewired consumers:
 - `connector-interactions-behavior.ts` — endpoint/waypoint/segment/side-bar/port fills → tokens; hover halo → live `@Primary` (`TryFindResource`, opacity from settings).
 - `alignment-guides-adorner.ts` — snap guide → `@Primary` via `DynamicResource`.
 - `text-block-adorner.ts` — accent → `@Primary` (resolved per instance), grip → `HandleFill`.
-- `diagram.ts` — selection `SelectionBoundsAdorner.ChromeStroke` → `@Primary` (`DynamicResource`), `ChromeFill` → `HandleFill`.
+- `board.ts` — selection `SelectionBoundsAdorner.ChromeStroke` → `@Primary` (`DynamicResource`), `ChromeFill` → `HandleFill`.
 - `connector.ts` (default stroke), `shape-text.ts` (label ink, ctor write), `text-node.ts` (fill/stroke), `connector-cap-options.ts` (neutral ink).
 
 **Selection is now uniformly `@Primary`** (bbox + group outline + resize handles + snap
 guide + text-block + hover halo), theme-adaptive light/dark.
 
 **One remaining literal:** the callout leader stroke `#64748b` stays inline in
-`diagram.template.mu` — it's `.mu`-bound (markup can't reach `DiagramSettings`) and
+`board.template.mu` — it's `.mu`-bound (markup can't reach `BoardSettings`) and
 tokenizing it needs a `PART_Leader` template-part + `Callout` ctor wiring; deferred
-to avoid risking an invisible leader (callouts aren't in the arch smoke diagram).
+to avoid risking an invisible leader (callouts aren't in the arch smoke board).
 Value matches the `ChromeNeutralInk` token, so a later refactor is a drop-in.
 
 Mural 4455 tests green.

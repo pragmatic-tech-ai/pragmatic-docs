@@ -409,7 +409,7 @@ Built since this doc was first written:
 - **Container recycling** — virtualizing panels now pull from a
   recycle pool via `Generator.ClaimRecycled`.
 - **Item-based selection** — `Selector` ships (`ListBox` / `TreeView` /
-  `Diagram` extend it), with multi-select + marquee.
+  `Board` extend it), with multi-select + marquee.
 
 ### Scroll-specific limitations
 

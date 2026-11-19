@@ -1,13 +1,13 @@
-# Diagram connectors
+# Board connectors
 
-Lines / curves that link two shapes on a `Diagram` surface, the way
+Lines / curves that link two shapes on a `Board` surface, the way
 yEd / Visio / drawio / Lucidchart / dgrm.net link nodes. A
-framework-level addition to the existing `Diagram` control (today:
+framework-level addition to the existing `Board` control (today:
 nodes only, no edges). This doc is the consolidated design — read it
 end-to-end before touching code.
 
-**Will live in:** [src/framework/diagram/](https://github.com/pragmatic-tech-ai/mural/blob/main/src/framework/diagram/) — the
-same directory as `diagram.ts` and `diagram-node.ts`.
+**Will live in:** [src/framework/board/](https://github.com/pragmatic-tech-ai/mural/blob/main/src/framework/board/) — the
+same directory as `board.ts` and `board-node.ts`.
 
 See also: [adorners.md](adorners.md) for the adorner surface the edit
 handles ride on, [behaviors.md](behaviors.md) for the
@@ -21,7 +21,7 @@ These were resolved through the brainstorming pass; everything else in
 the doc follows from them.
 
 1. **Anchor model** — *both* ports + auto. A connector's endpoint
-   names an item (a [Figure](https://github.com/pragmatic-tech-ai/mural/blob/main/src/framework/diagram/figure.ts), or any
+   names an item (a [Figure](https://github.com/pragmatic-tech-ai/mural/blob/main/src/framework/board/figure.ts), or any
    Model in the duck-typed lookup) and *optionally* a port. If the port
    name resolves against the item's `Ports` collection, use it.
    Otherwise auto-anchor.
@@ -32,15 +32,15 @@ the doc follows from them.
    source shape to a target. Re-anchor by dragging endpoints.
    Add / move / remove waypoints. Delete with `Delete` / `Backspace`.
 4. **Scope** — *framework primitive from day one*. Lives in
-   `src/framework/diagram/`, not as demo-local code in the diagram
-   demo. The diagram demo is the first consumer, not the owner.
+   `src/framework/board/`, not as demo-local code in the board
+   demo. The board demo is the first consumer, not the owner.
 5. **Port location** — *both* bbox + outline. A port declares its
    coordinate space (`Bbox` 0..1 local, or `Outline` arc-length
    parameter against `Figure.Geometry`). Bbox default; outline opt-in
    for shapes that need precision.
 6. **Custom routers + custom connectors + custom caps** — all
    extensible. Routers via `RouterRegistry`. Connector subclasses via
-   `Diagram.ConnectorTemplate: DataTemplate`. Caps via per-end
+   `Board.ConnectorTemplate: DataTemplate`. Caps via per-end
    `SourceCapTemplate` / `TargetCapTemplate: DataTemplate`.
 7. **Port distribution** — `IPortProvider` strategy. Defaults map from
    `Figure.Kind` to a provider via a framework-owned table; the consumer
@@ -50,8 +50,8 @@ the doc follows from them.
 
 ## 1a. Architectural premise — items-are-Figures
 
-The framework Diagram landed an *items-are-Figures* shift (commit
-5dc53a3): items in `Diagram.ItemsSource` ARE `Figure` instances; the
+The framework Board landed an *items-are-Figures* shift (commit
+5dc53a3): items in `Board.ItemsSource` ARE `Figure` instances; the
 container and the data row are the same Visual. There is no separate
 `NodeVM` layer. Every "node" reference downstream in this doc means a
 `Figure` (or any Model that fits the duck-typed shape — endpoint
@@ -65,26 +65,26 @@ Consequences for the design:
     `Figure`, not on a fictional NodeVM. § 3.8 sketches the additions.
   - **Source / target reactivity hooks Figure's `Left` / `Top`.** These
     DPs already exist with `MetaData.Arrange | BindsTwoWayByDefault`
-    ([figure.ts:77-80](https://github.com/pragmatic-tech-ai/mural/blob/main/src/framework/diagram/figure.ts#L77-L80)), so
+    ([figure.ts:77-80](https://github.com/pragmatic-tech-ai/mural/blob/main/src/framework/board/figure.ts#L77-L80)), so
     § 7.2 option (a) (subscribe on `'Left'` / `'Top'` strings) lands
     directly with no Figure changes.
   - **Default-provider lookup uses `Figure.Kind`, not a `Shape`-class
     static.** Coupling provider defaults to `Shape` subclasses would
-    drag the diagram framework into [src/basic/shapes/](https://github.com/pragmatic-tech-ai/mural/blob/main/src/basic/shapes/) —
+    drag the board framework into [src/basic/shapes/](https://github.com/pragmatic-tech-ai/mural/blob/main/src/basic/shapes/) —
     a layering violation. A framework-owned `Map<string, IPortProvider>`
-    keyed on `Kind` keeps the catalog diagram-agnostic.
-  - **Demo VM is now framework-owned.** The diagram demo's old
-    `diagram-vm.mjs` was migrated into
-    [DiagramDocument](https://github.com/pragmatic-tech-ai/mural/blob/main/src/framework/diagram/diagram-document.ts) (commit
-    1751e65). Step 13 of § 9 extends `DiagramDocument`, not a demo file.
+    keyed on `Kind` keeps the catalog board-agnostic.
+  - **Demo VM is now framework-owned.** The board demo's old
+    `board-vm.mjs` was migrated into
+    [BoardDocument](https://github.com/pragmatic-tech-ai/mural/blob/main/src/framework/board/board-document.ts) (commit
+    1751e65). Step 13 of § 9 extends `BoardDocument`, not a demo file.
 
 ## 2. Module layout
 
 ```
-src/framework/diagram/
-  diagram.ts                       (modify — add Connectors + ConnectorTemplate DPs, switch ItemsPanel to layered)
+src/framework/board/
+  board.ts                       (modify — add Connectors + ConnectorTemplate DPs, switch ItemsPanel to layered)
   figure.ts                        (modify — add PortProvider / ExplicitPorts DPs; notify on Left/Top/Width/Height so routes re-run)
-  diagram-layers-panel.ts          (NEW — 2-layer Panel: connectors / figures. Adorners use the existing AdornerLayer)
+  board-layers-panel.ts          (NEW — 2-layer Panel: connectors / figures. Adorners use the existing AdornerLayer)
   connector.ts                     (NEW — Connector extends Shape)
   connector-endpoint.ts            (NEW — ConnectorEndpoint value-type Model)
   port.ts                          (NEW — Port + PortResolver)
@@ -160,8 +160,8 @@ export enum ConnectorEnd {
     Target = 'Target',
 }
 
-// diagram-layers-panel.ts
-export enum DiagramLayer {
+// board-layers-panel.ts
+export enum BoardLayer {
     Connectors = 'Connectors',
     Figures    = 'Figures',
 }
@@ -258,7 +258,7 @@ both named (addressable as `PortName: 'in'` / `'out'`) *and*
 positionally addressable (`(S, 0)` / `(N, 0)`). Hybrid is fine.
 
 `PortResolver` is a stateless helper that, given a `(port, node)`
-pair, returns `{ x, y, side }` in diagram coordinates. Outline-mode
+pair, returns `{ x, y, side }` in board coordinates. Outline-mode
 resolution caches the flattened-outline arc-length table per
 `(Geometry identity, flattenTolerance)` so repeated re-routes don't
 re-flatten. Cache key uses the Geometry's reference identity; the
@@ -292,7 +292,7 @@ new Port({ Name: 'in', CoordSpace: PortCoordSpace.Outline, OutlineT: 0.10, Side:
 ### 3.2 ConnectorEndpoint
 
 One end of a connector. Either bound to an item Model (in the framework
-Diagram this is a [Figure](https://github.com/pragmatic-tech-ai/mural/blob/main/src/framework/diagram/figure.ts), but the DP
+Board this is a [Figure](https://github.com/pragmatic-tech-ai/mural/blob/main/src/framework/board/figure.ts), but the DP
 types as `Model` so non-Figure items work as long as they expose
 position + geometry) with an optional port reference, or free-floating
 (used during a drag-create / re-anchor drag, and for un-attached
@@ -400,7 +400,7 @@ Built-ins self-register on module load under the names from
 Consumers register custom routers by name:
 
 ```ts
-import { RouterRegistry } from '@pragmatic-tech-ai/mural/framework/diagram';
+import { RouterRegistry } from '@pragmatic-tech-ai/mural/framework/board';
 RouterRegistry.register('elbowed', new ElbowedRouter());
 // then in markup: Connector [..., RoutingMode="elbowed"]
 ```
@@ -469,7 +469,7 @@ changes route through the same scheduler.
 
 **Placement.** The Connector lives in the connectors layer's Canvas at
 `Canvas.Left = 0, Canvas.Top = 0`. Its routed `Geometry` carries
-diagram-host (absolute) coordinates per § 5 — no translation applied
+board-host (absolute) coordinates per § 5 — no translation applied
 at paint time. Same convention as the alignment-guides adorner.
 
 **Reactivity to source / target moves.** When `Source.Node` or
@@ -479,28 +479,28 @@ fire reschedules a route recompute. Subscription is per-endpoint and
 re-wires when the endpoint's `Node` DP changes. Hardcoded `'Left'` /
 `'Top'` strings work because Figure defines those DPs with
 `MetaData.Arrange | BindsTwoWayByDefault`
-([figure.ts:77-80](https://github.com/pragmatic-tech-ai/mural/blob/main/src/framework/diagram/figure.ts#L77-L80)). See open
+([figure.ts:77-80](https://github.com/pragmatic-tech-ai/mural/blob/main/src/framework/board/figure.ts#L77-L80)). See open
 question § 7.2 for the future-proofing path if non-Figure "items"
 surface.
 
-### 3.5 Diagram changes
+### 3.5 Board changes
 
-Two structural changes to today's [diagram.ts](https://github.com/pragmatic-tech-ai/mural/blob/main/src/framework/diagram/diagram.ts):
+Two structural changes to today's [board.ts](https://github.com/pragmatic-tech-ai/mural/blob/main/src/framework/board/board.ts):
 
 ```ts
-class Diagram extends Selector {
+class Board extends Selector {
     // ... existing PositionSnap DP unchanged ...
 
     static ConnectorsKey         = Model.RegisterProperty<ObservableCollection<Model> | undefined>(
-        Diagram, 'Connectors', undefined, MetaData.None);
+        Board, 'Connectors', undefined, MetaData.None);
     static ConnectorTemplateKey  = Model.RegisterProperty<DataTemplate | undefined>(
-        Diagram, 'ConnectorTemplate', undefined, MetaData.None);
+        Board, 'ConnectorTemplate', undefined, MetaData.None);
 }
 ```
 
 `Connectors` is a parallel collection to `ItemsSource`, not a subset.
 Connectors aren't items — they're a second selectable population on
-the same canvas. The Diagram listens to `Connectors`'s collection
+the same canvas. The Board listens to `Connectors`'s collection
 events and materializes one Visual per entry via
 `ConnectorTemplate.LoadContent()`, falling back to a built-in default
 that produces `Connector`. Identical mechanic to `ItemTemplate` →
@@ -509,8 +509,8 @@ that produces `Connector`. Identical mechanic to `ItemTemplate` →
 Selection is unified — both Figures and Connectors live in the
 Selector's `_selectedContainers`. Marquee selects whichever
 containers fall inside the rect. `Delete` / `Backspace` fires the
-existing `Diagram.DeleteRequested` event
-([diagram.ts:286-322](https://github.com/pragmatic-tech-ai/mural/blob/main/src/framework/diagram/diagram.ts#L286-L322)),
+existing `Board.DeleteRequested` event
+([board.ts:286-322](https://github.com/pragmatic-tech-ai/mural/blob/main/src/framework/board/board.ts#L286-L322)),
 leaving it to the consumer's listener to update the underlying VM
 collections. See open question § 7.3.
 
@@ -552,10 +552,10 @@ Default cap catalog ships as DynamicResource keys in
 Default for `TargetCapTemplate` is `@ArrowCap`. Default for
 `SourceCapTemplate` is `undefined` (no cap at the source end).
 
-### 3.7 DiagramLayersPanel
+### 3.7 BoardLayersPanel
 
 A 2-layer Canvas-shaped Panel. Replaces the bare Canvas that's the
-Diagram's current ItemsPanel.
+Board's current ItemsPanel.
 
 | Layer | Z | Hosts                                            |
 |-------|---|--------------------------------------------------|
@@ -564,17 +564,17 @@ Diagram's current ItemsPanel.
 
 Each layer is itself a `Canvas` so children honor `Canvas.Left` /
 `Canvas.Top`. Layer routing happens via an attached property:
-`DiagramLayersPanel.Layer: DiagramLayer` on each child Visual (see
+`BoardLayersPanel.Layer: BoardLayer` on each child Visual (see
 § 3.0 for the enum).
 
 Adorners (selection rings, edit handles, alignment guides, drag-create
 ghost, port-discovery overlays) ride on the framework's existing
 `AdornerLayer` overlay
-([diagram.ts:497-560](https://github.com/pragmatic-tech-ai/mural/blob/main/src/framework/diagram/diagram.ts#L497-L560) shows
+([board.ts:497-560](https://github.com/pragmatic-tech-ai/mural/blob/main/src/framework/board/board.ts#L497-L560) shows
 how alignment-guides + selection-resize mount today). The AdornerLayer
 renders above the ItemsPanel by construction, so a 2-layer panel
 gives the same z-order as the original 3-layer sketch with one less
-mechanism. Connectors visually behind figures (typical diagram-tool
+mechanism. Connectors visually behind figures (typical board-tool
 look); single panel to marquee / autoscroll against. See open question
 § 7.6 for the z-order around drag.
 
@@ -597,7 +597,7 @@ genuinely different use cases:
   ports are typed connection slots.
 - **Provider-computed ports** — consumer picks a distribution strategy
   + parameters; framework computes `Port` instances on demand. Used
-  for purely positional ports — most decorative diagram shapes.
+  for purely positional ports — most decorative board shapes.
 
 ```ts
 interface IPortHost {
@@ -634,7 +634,7 @@ class Figure extends ContentControl {
 }
 ```
 
-**Built-in providers.** All in `src/framework/diagram/port-providers/`.
+**Built-in providers.** All in `src/framework/board/port-providers/`.
 
 | Provider | Topology | Parameters | Typical shapes |
 |---|---|---|---|
@@ -646,7 +646,7 @@ class Figure extends ContentControl {
 
 Each provider emits `Port` instances; the existing `PortResolver`
 machinery (§ 3.1) resolves their `(CoordSpace, X/Y or OutlineT)` to
-diagram-host coordinates. **Providers don't bypass the resolver —
+board-host coordinates. **Providers don't bypass the resolver —
 they produce its input.** Means the bbox-mode vs outline-mode split
 keeps working: `BoundingBoxPorts` emits `CoordSpace = Bbox` ports,
 `OutlinePorts` emits `CoordSpace = Outline` ports, etc.
@@ -691,10 +691,10 @@ authoring callback assigns them.
 `Map<Figure.Kind, IPortProvider>`; consumers override per-instance
 through `Figure.PortProvider`. Keeping the table out of
 [src/basic/shapes/](https://github.com/pragmatic-tech-ai/mural/blob/main/src/basic/shapes/) keeps the catalog
-diagram-agnostic (the catalog otherwise has zero connector-aware code).
+board-agnostic (the catalog otherwise has zero connector-aware code).
 
 ```ts
-// src/framework/diagram/port-providers/default-port-providers.ts
+// src/framework/board/port-providers/default-port-providers.ts
 
 const DEFAULT_PORT_PROVIDERS: ReadonlyMap<string, IPortProvider> = new Map([
     ['rectangle', new BoundingBoxPorts({ portsPerSide: 1 })],
@@ -750,9 +750,9 @@ discovery is active).
 
 ```text
 PointerDown over source Figure (or port)
-  → Diagram materializes a transient Connector with
+  → Board materializes a transient Connector with
       Source = { Node: sourceFigure, <port-ref if a port was hit> }
-      Target = { FreePoint: cursorDiagramCoords }
+      Target = { FreePoint: cursorBoardCoords }
     where <port-ref> is:
       - PortName: <name>                          if the hit port had Name set
       - PortSide: <side>, PortIndex: <index>      if the hit port was anonymous
@@ -768,10 +768,10 @@ PointerMove
 PointerUp over target Figure (or port)
   → behavior clears Target.FreePoint, sets Target.Node = targetFigure
     (+ the same <port-ref> shape as above if a port was hit)
-  → fires Diagram.ConnectorCreated event so the consumer can push
+  → fires Board.ConnectorCreated event so the consumer can push
     the connector into their VM-side collection (same event-based
     contract as the existing Group / Combine / Delete events on
-    Diagram — [diagram.ts:265-289](https://github.com/pragmatic-tech-ai/mural/blob/main/src/framework/diagram/diagram.ts#L265-L289))
+    Board — [board.ts:265-289](https://github.com/pragmatic-tech-ai/mural/blob/main/src/framework/board/board.ts#L265-L289))
   → the transient connector is removed; the consumer's add triggers
     a fresh non-transient one through the Connectors collection
 
@@ -820,9 +820,9 @@ they're polyline vertices. For Bezier, they're spline knots.
 
 ### 4.4 Delete
 
-`Diagram.OnKeyDown` already handles `Delete` / `Backspace` and fires the
+`Board.OnKeyDown` already handles `Delete` / `Backspace` and fires the
 `DeleteRequested` event with a `SelectedItems` snapshot
-([diagram.ts:618-622](https://github.com/pragmatic-tech-ai/mural/blob/main/src/framework/diagram/diagram.ts#L618-L622)).
+([board.ts:618-622](https://github.com/pragmatic-tech-ai/mural/blob/main/src/framework/board/board.ts#L618-L622)).
 Once connectors land in the same selection (per § 7.3), the snapshot
 covers them too without further changes. The existing consumer
 listener owns the collection mutation across both `ItemsSource` and
@@ -830,17 +830,17 @@ listener owns the collection mutation across both `ItemsSource` and
 
 ## 5. Coordinate spaces (pin once, test once)
 
-- **Diagram-host coords.** What `Canvas.Left` / `Canvas.Top` on a
+- **Board-host coords.** What `Canvas.Left` / `Canvas.Top` on a
   Figure are. What `Figure.Left` / `Top` mirror to
-  ([figure.ts:308-315](https://github.com/pragmatic-tech-ai/mural/blob/main/src/framework/diagram/figure.ts#L308-L315) is the
+  ([figure.ts:308-315](https://github.com/pragmatic-tech-ai/mural/blob/main/src/framework/board/figure.ts#L308-L315) is the
   current mirror). What `ConnectorEndpoint.FreePoint` is in. What the
   router consumes and produces.
 - **Shape-local bbox coords.** What `Port.X` / `Y` are in (bbox mode),
   normalized 0..1. `PortResolver` scales by the Figure's `ArrangedRect`
-  to get diagram-host coords.
+  to get board-host coords.
 - **Shape-local outline arc-length.** What `Port.OutlineT` is in,
   parameter 0..1 around the perimeter. `PortResolver` flattens
-  `Figure.Geometry` and walks to get diagram-host coords.
+  `Figure.Geometry` and walks to get board-host coords.
 
 All three pinned by tests at the three-way boundary in
 `port-bbox.test.ts` / `port-outline.test.ts`.
@@ -908,13 +908,13 @@ exist on whatever Model the endpoint references). Three options:
   - **(a) Direct subscription on `'Left'` / `'Top'` strings.** Simplest.
     Connector hardcodes those names; any item Model that uses different
     coords doesn't trigger re-routes. Works directly because
-    [Figure](https://github.com/pragmatic-tech-ai/mural/blob/main/src/framework/diagram/figure.ts) defines `LeftKey` / `TopKey`
+    [Figure](https://github.com/pragmatic-tech-ai/mural/blob/main/src/framework/board/figure.ts) defines `LeftKey` / `TopKey`
     with `MetaData.Arrange | BindsTwoWayByDefault`
-    ([figure.ts:77-80](https://github.com/pragmatic-tech-ai/mural/blob/main/src/framework/diagram/figure.ts#L77-L80)).
+    ([figure.ts:77-80](https://github.com/pragmatic-tech-ai/mural/blob/main/src/framework/board/figure.ts#L77-L80)).
   - **(b) `IPositionedItem` interface.** Connector duck-types on a
     `Bounds: Rect` getter + `OnBoundsChanged` event. Items that don't
     implement it don't get re-routes. Cleaner contract, more boilerplate.
-  - **(c) Diagram-coordinated.** Diagram listens for all Figure moves
+  - **(c) Board-coordinated.** Board listens for all Figure moves
     and tells affected connectors to re-route. Connector never
     subscribes directly. Lowest coupling, most indirection.
 
@@ -938,14 +938,14 @@ easy but semantically loaded:
 
 Options: (i) extend `Selector` with a `KindResolver` callback that
 maps a container to its source item collection — `SelectedItems`
-returns a heterogenous mix. (ii) Subclass `Selector` for Diagram
+returns a heterogenous mix. (ii) Subclass `Selector` for Board
 into a `MultiKindSelector` that exposes `SelectedFigures` and
 `SelectedConnectors` separately. (iii) Keep two completely separate
-selection states on Diagram and let the consumer query both.
+selection states on Board and let the consumer query both.
 
-Recommendation: (ii) — explicit two-channel API on Diagram. Marquee
+Recommendation: (ii) — explicit two-channel API on Board. Marquee
 behavior fills both per a per-container kind check. Avoids reshaping
-`Selector`'s contract for a Diagram-specific need.
+`Selector`'s contract for a Board-specific need.
 
 ### 7.4. Sub-frame re-route during drag — throttle?
 
@@ -972,15 +972,15 @@ nodes should reveal their ports visually (small circles / squares
 at each port position, snap-on-hover). Where do these visuals come
 from?
 
-  - **(a) Framework-drawn adorner.** Diagram reads each candidate
+  - **(a) Framework-drawn adorner.** Board reads each candidate
     node's `Ports` collection and draws a small framework-styled
     glyph at each port. Consumers don't author anything.
   - **(b) DataTemplate-authored.** The node's DataTemplate declares
     a `PortsTemplate` (a nested ItemsControl over its ports). Visible
-    only when an attached `Diagram.IsPortDiscoveryActive` DP is set.
+    only when an attached `Board.IsPortDiscoveryActive` DP is set.
     Maximally flexible; more authoring burden.
   - **(c) Hybrid.** Framework-drawn default with an attached
-    property `Diagram.PortGlyphTemplate` override.
+    property `Board.PortGlyphTemplate` override.
 
 Recommendation: (c). Default lights up port locations for free;
 demos that want stylized port glyphs override.
@@ -988,7 +988,7 @@ demos that want stylized port glyphs override.
 ### 7.6. Z-order for selected Figure during drag
 
 A Figure being dragged ideally renders *above* its connecting lines so
-the selection ring isn't occluded. `DiagramLayersPanel` puts
+the selection ring isn't occluded. `BoardLayersPanel` puts
 connectors at layer 0 and Figures at layer 1, so a Figure is already
 above connectors. Selection adorners ride the existing AdornerLayer
 overlay (above both layers), so the selection ring sits over the
@@ -1021,7 +1021,7 @@ until a demo motivates it. Document as a v2 follow-up.
 ### 7.9. Connector labels
 
 Text on the connector (typically mid-line, optionally per-segment)
-is a standard diagram-tool feature. Easy add: `LabelTemplate:
+is a standard board-tool feature. Easy add: `LabelTemplate:
 DataTemplate` DP on Connector + a midpoint-anchored ContentPresenter
 managed by the cap pipeline. Defer until v2 unless the first demo
 asks for it.
@@ -1068,7 +1068,7 @@ edge / arc. Worth pinning in a test fixture.
 ### 7.12. When does IPortProvider.GetPorts() actually run?
 
 Provider results depend on `Figure.ArrangedRect` (always — for scaling
-local coords to diagram-host coords) and on `Figure.Geometry` (for
+local coords to board-host coords) and on `Figure.Geometry` (for
 outline-mode providers). Per-frame re-computation is wasteful; never
 re-computing breaks when the inputs change.
 
@@ -1083,7 +1083,7 @@ computed under. Invalidate when any of those change:
   - `ArrangedRect` change → invalidate, but only when `Width` /
     `Height` change. A pure translation (Left / Top move with no resize)
     doesn't change shape-local port positions; the existing
-    diagram-host conversion happens downstream in `PortResolver` and
+    board-host conversion happens downstream in `PortResolver` and
     re-runs naturally on every route compute.
 
 The arrange-cache invalidation is the subtle one. A naive
@@ -1145,12 +1145,12 @@ dependency order. Each row produces something useful + testable.
 | 5.5 | `port-providers/` directory + 5 built-in providers + `default-port-providers.ts` (kind→provider table + `resolveDefaultPortProvider` helper) + `Figure.PortProvider` / `Figure.ExplicitPorts` DPs | `port-providers.test.ts` passes; bbox + radial + outline + vertex + custom each pinned |
 | 6 | `connector-endpoint.ts` + `connector.ts` skeleton (no caps, no edit) | `connector.test.ts` passes for static routes |
 | 7 | `caps/cap-inset.ts` + cap pipeline in Connector + default cap templates in framework.resources.mu | `cap-inset.test.ts` passes |
-| 8 | `diagram-layers-panel.ts` (2-layer) + Diagram changes (`Connectors` + `ConnectorTemplate` DPs, layered ItemsPanel) | diagram demo renders a hand-authored connector |
+| 8 | `board-layers-panel.ts` (2-layer) + Board changes (`Connectors` + `ConnectorTemplate` DPs, layered ItemsPanel) | board demo renders a hand-authored connector |
 | 9 | Source/target-reactivity wiring on Connector — re-route on Figure `Left`/`Top` move | demo-side smoke: drag a Figure, watch the connector follow |
 | 10 | `connector-create-behavior.ts` — drag-create gesture | `connector-create.test.ts` passes |
 | 11 | `connector-edit-adorner.ts` — endpoint + waypoint editing | `connector-edit.test.ts` passes |
-| 12 | Unified selection on Diagram (per § 7.3 recommendation) — connectors join Selector's `_selectedContainers` so the existing `DeleteRequested` event covers them | demo-side smoke: marquee + Delete clears mixed selection |
-| 13 | [DiagramDocument](https://github.com/pragmatic-tech-ai/mural/blob/main/src/framework/diagram/diagram-document.ts) (now framework-owned per § 1a — no demo-side VM file): add a `Connectors` collection + serialize/deserialize hooks; the diagram demo picks it up automatically through its DataContext | demo build green + manual exercise |
+| 12 | Unified selection on Board (per § 7.3 recommendation) — connectors join Selector's `_selectedContainers` so the existing `DeleteRequested` event covers them | demo-side smoke: marquee + Delete clears mixed selection |
+| 13 | [BoardDocument](https://github.com/pragmatic-tech-ai/mural/blob/main/src/framework/board/board-document.ts) (now framework-owned per § 1a — no demo-side VM file): add a `Connectors` collection + serialize/deserialize hooks; the board demo picks it up automatically through its DataContext | demo build green + manual exercise |
 
 ## 10. Routing ground rules
 
@@ -1201,7 +1201,7 @@ from the *target* port along the target-side outward ray:
 | S                | `+Y`              | `wp.X == port.X` AND `wp.Y > port.Y`  |
 
 (`port` is the source port for `wp[0]` and the target port for
-`wp[last]`; both are diagram-host coordinates. Y is screen-down-positive
+`wp[last]`; both are board-host coordinates. Y is screen-down-positive
 per § 5.)
 
 Consequence: the connector leaves the source shape strictly
@@ -1274,8 +1274,8 @@ route compute and emits them as `PathGeometry` segments; they never
 land in any DP. The drag gesture writes `Target.FreePoint` (or
 `Source.FreePoint`) per pointer move and lets the router recompute —
 nothing mutates `Waypoints`. Matches today's
-[ConnectorCreateBehavior.UpdateCursor](https://github.com/pragmatic-tech-ai/mural/blob/main/src/framework/diagram/behaviors/connector-create-behavior.ts)
-+ [OrthogonalRouter.computePoints](https://github.com/pragmatic-tech-ai/mural/blob/main/src/framework/diagram/routing/orthogonal-router.ts).
+[ConnectorCreateBehavior.UpdateCursor](https://github.com/pragmatic-tech-ai/mural/blob/main/src/framework/board/behaviors/connector-create-behavior.ts)
++ [OrthogonalRouter.computePoints](https://github.com/pragmatic-tech-ai/mural/blob/main/src/framework/board/routing/orthogonal-router.ts).
 
 Consequence: `ConnectorEditAdorner` (§ 4.3) renders handles only for
 points in `Connector.Waypoints` — i.e. only for user-added bends. The

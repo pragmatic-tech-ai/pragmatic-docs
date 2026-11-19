@@ -1,16 +1,16 @@
-# Diagram control
+# Board control
 
-Promote the diagrammer demo's VM-side infrastructure into framework
-primitives. The demo's `DiagramVM` (1483 LOC), `GroupVM`,
+Promote the boardmer demo's VM-side infrastructure into framework
+primitives. The demo's `BoardVM` (1483 LOC), `GroupVM`,
 `ShapeNodeVM`, three behaviors, two adorners, and the demo-side
-selection-bridge are essentially **a working diagrammer control
+selection-bridge are essentially **a working boardmer control
 authored in the wrong directory** — the `commands` demo already
 extends them as if they were framework infra. This doc consolidates
 the refactor target: what moves, what stays, what shape the new
 framework surface takes.
 
 Sibling spec to [connectors.md](connectors.md) — both target
-`src/framework/diagram/`. Lands stage-by-stage so the demo never
+`src/framework/board/`. Lands stage-by-stage so the demo never
 breaks (per § 4 sequencing).
 
 See also: [connectors.md](connectors.md) for the connector subsystem
@@ -26,24 +26,24 @@ guide adorners ride on.
 
 1. **`Figure` and `Group` are container controls, not data classes.**
    Modeled on `ListBoxItem` and the ListBox grouping primitive. `Figure`
-   is today's `DiagramNode` renamed and promoted; `Group` is new —
-   like a ListBox GroupItem but for the diagram surface. Both live
-   under `src/framework/diagram/`. The framework does NOT ship a Figure
+   is today's `BoardNode` renamed and promoted; `Group` is new —
+   like a ListBox GroupItem but for the board surface. Both live
+   under `src/framework/board/`. The framework does NOT ship a Figure
    or Group data class — consumers bring their own VMs that satisfy
    small duck-typed interfaces (`IFigure` / `IGroup`). Naming chosen
    over `Node` to avoid the DOM `Node` global collision.
-2. **Diagram absorbs every command + selection-bounds + behavior
-   opt-in that lives on `DiagramVM` today.** 14 commands (5 align + 2
+2. **Board absorbs every command + selection-bounds + behavior
+   opt-in that lives on `BoardVM` today.** 14 commands (5 align + 2
    distribute + 2 group/ungroup + 4 combine + 1 selection-resize), 5
    selection-bounds DPs, 3 behavior opt-ins (alignment guides,
    selection resize, elevation selection), 2 multi-target format DPs.
-3. **Collaborator pattern for Diagram internals.** Mirrors the
+3. **Collaborator pattern for Board internals.** Mirrors the
    recently-completed `Element` split that extracted `StyleApplicator`
    / `TriggerHost` / `ResourceResolver`. Three collaborators:
-   `DiagramCommands` (owns the 14 commands + their implementations),
+   `BoardCommands` (owns the 14 commands + their implementations),
    `SelectionBoundsTracker` (owns the 5 selection-bbox DPs),
    `FormatMirror` (owns the 2 multi-target format DPs and the seed +
-   broadcast machinery). Diagram retains public DP surfaces but
+   broadcast machinery). Board retains public DP surfaces but
    delegates implementation.
 4. **Per-feature staged refactor.** Phases A-N below. Each phase
    produces a self-contained commit; the demo continues to work
@@ -58,17 +58,17 @@ guide adorners ride on.
 ## 2. Module layout
 
 ```
-src/framework/diagram/
-  diagram.ts                       (modify — gains 14 commands + 5 selection-bound DPs + 3 opt-in DPs + 2 format DPs)
-  diagram-node.ts                  (rename → figure.ts, class DiagramNode → Figure; re-export alias for 1 release)
-  figure.ts                        (renamed from diagram-node.ts)
+src/framework/board/
+  board.ts                       (modify — gains 14 commands + 5 selection-bound DPs + 3 opt-in DPs + 2 format DPs)
+  board-node.ts                  (rename → figure.ts, class BoardNode → Figure; re-export alias for 1 release)
+  figure.ts                        (renamed from board-node.ts)
   group.ts                         (NEW — ItemsControl-shaped container for grouped Figures/Groups)
   contracts/
     i-figure.ts                    (NEW — IFigure duck-typed interface)
     i-group.ts                     (NEW — IGroup duck-typed interface)
-    top-level-of.ts                (NEW — Parent-walk helper, moved from diagram-vm.mjs)
+    top-level-of.ts                (NEW — Parent-walk helper, moved from board-vm.mjs)
   collaborators/
-    diagram-commands.ts            (NEW — 14 command implementations + CanExecute predicates)
+    board-commands.ts            (NEW — 14 command implementations + CanExecute predicates)
     selection-bounds-tracker.ts    (NEW — derives SelectionLeft/Top/Width/Height/Count from SelectedItems)
     format-mirror.ts               (NEW — seeds FormatFill/Stroke from selection, broadcasts edits)
   commands/
@@ -80,14 +80,14 @@ src/framework/diagram/
     alignment-guides-behavior.ts   (NEW — promoted from demo/.../behaviors/align-edges-behavior.mjs)
     alignment-guides-adorner.ts    (NEW — promoted from demo/.../alignment-guides-adorner.mjs)
     selection-resize-adorner.ts    (NEW — promoted from demo/.../selection-resize-adorner.mjs)
-    elevation-selection-behavior.ts (NEW — the "click member → select root" rule, promoted from demo/.../diagram.mjs attachSelectionBridge)
+    elevation-selection-behavior.ts (NEW — the "click member → select root" rule, promoted from demo/.../board.mjs attachSelectionBridge)
   toolbox.ts                       (NEW — palette control with drag-source items)
   toolbox-drop-behavior.ts         (NEW — promoted from demo/.../behaviors/canvas-drop-behavior.mjs)
   tests/
     (existing + new per-feature tests)
 ```
 
-`src/framework/diagram/index.ts` re-exports public surface. The
+`src/framework/board/index.ts` re-exports public surface. The
 internal `contracts/` / `collaborators/` / `commands/` / `behaviors/`
 directories are organizational — consumers import from the package
 barrel.
@@ -102,9 +102,9 @@ bbox tracking) read these shapes from the items in
 them; the framework doesn't require inheritance from a specific class.
 
 ```ts
-// src/framework/diagram/contracts/i-figure.ts
+// src/framework/board/contracts/i-figure.ts
 export interface IFigure {
-    // Position in diagram-host coordinates. Required.
+    // Position in board-host coordinates. Required.
     X:      number;
     Y:      number;
     Width:  number;
@@ -117,7 +117,7 @@ export interface IFigure {
     Parent?: IGroup | undefined;
 }
 
-// src/framework/diagram/contracts/i-group.ts
+// src/framework/board/contracts/i-group.ts
 export interface IGroup extends IFigure {
     // Members collection. Type bound is IFigure (group can contain
     // nodes AND nested groups since IGroup extends IFigure).
@@ -142,16 +142,16 @@ extend the demo-side `ShapeNodeVM`-style class without that becoming
 a framework dependency — the framework operations type-check on the
 interface, not on any specific class.
 
-### 3.2 Figure control — promoted from DiagramNode
+### 3.2 Figure control — promoted from BoardNode
 
-Today's [diagram-node.ts](https://github.com/pragmatic-tech-ai/mural/blob/main/src/framework/diagram/diagram-node.ts) is
+Today's [board-node.ts](https://github.com/pragmatic-tech-ai/mural/blob/main/src/framework/board/board-node.ts) is
 already 95% of the desired shape: ContentControl with X / Y DPs,
 drag-to-move with click-vs-drag distinction, group-drag partners,
 scroll-aware drag compensation, position snap callback integration.
 The refactor renames it and adds two small things:
 
 ```ts
-// src/framework/diagram/figure.ts
+// src/framework/board/figure.ts
 export class Figure extends ContentControl
 {
     // Left / Top / drag-to-move / group-drag / scroll-aware — all
@@ -166,27 +166,27 @@ export class Figure extends ContentControl
     // markup pattern `Width=$Width` binds the DataContext's data-side
     // Width onto Visual.Width directly. SelectionBoundsTracker reads
     // Width / Height from the SELECTED DATA ITEMS (IFigure-typed
-    // entries in Diagram.SelectedItems), not from the Figure container,
+    // entries in Board.SelectedItems), not from the Figure container,
     // so the container doesn't need its own Width/Height DPs.
 
-    // ... drag-to-move logic unchanged from current DiagramNode ...
+    // ... drag-to-move logic unchanged from current BoardNode ...
 }
 ```
 
-**Compatibility shim.** The `DiagramNode` name is re-exported as an
+**Compatibility shim.** The `BoardNode` name is re-exported as an
 alias for one release window after the rename so the
-`commands`-demo's `import { DiagramNode }` paths don't break
+`commands`-demo's `import { BoardNode }` paths don't break
 mid-refactor. Alias removed in Phase N.
 
 ### 3.3 Group control — new
 
-Like `ListBoxItem` for the diagram surface. A container that wraps a
+Like `ListBoxItem` for the board surface. A container that wraps a
 set of grouped Figures (and nested Groups), renders shared chrome
 (default: dashed border when selected), and translates its members
 en bloc when dragged. Modeled on the ListBox grouping primitive (`GroupItem`).
 
 ```ts
-// src/framework/diagram/group.ts
+// src/framework/board/group.ts
 export class Group extends ContentControl
 {
     // Left / Top / Width / Height are READ-ONLY-from-outside on a Group
@@ -226,31 +226,31 @@ The "elevation" rule (clicking a member → selects the topmost Group
 ancestor) is implemented separately by `ElevationSelectionBehavior`
 (§ 3.7) so consumers without grouping needs don't pay for the walk.
 
-### 3.4 Diagram changes — the kitchen-sink surface
+### 3.4 Board changes — the kitchen-sink surface
 
 ```ts
-export class Diagram extends Selector {
+export class Board extends Selector {
     // ---- Existing (already shipped) -------------------------------
     public static readonly PositionSnapKey = ...;
 
     // ---- From this refactor: selection bounds ---------------------
     // Derived. Read-only-from-outside. SelectionBoundsTracker owns
     // the recompute when SelectedItems / member positions change.
-    public static readonly SelectionLeftKey   = Model.RegisterReadOnlyProperty<number>(Diagram, 'SelectionLeft',   0, MetaData.None);
-    public static readonly SelectionTopKey    = Model.RegisterReadOnlyProperty<number>(Diagram, 'SelectionTop',    0, MetaData.None);
-    public static readonly SelectionWidthKey  = Model.RegisterReadOnlyProperty<number>(Diagram, 'SelectionWidth',  0, MetaData.None);
-    public static readonly SelectionHeightKey = Model.RegisterReadOnlyProperty<number>(Diagram, 'SelectionHeight', 0, MetaData.None);
-    public static readonly SelectionCountKey  = Model.RegisterReadOnlyProperty<number>(Diagram, 'SelectionCount',  0, MetaData.None);
+    public static readonly SelectionLeftKey   = Model.RegisterReadOnlyProperty<number>(Board, 'SelectionLeft',   0, MetaData.None);
+    public static readonly SelectionTopKey    = Model.RegisterReadOnlyProperty<number>(Board, 'SelectionTop',    0, MetaData.None);
+    public static readonly SelectionWidthKey  = Model.RegisterReadOnlyProperty<number>(Board, 'SelectionWidth',  0, MetaData.None);
+    public static readonly SelectionHeightKey = Model.RegisterReadOnlyProperty<number>(Board, 'SelectionHeight', 0, MetaData.None);
+    public static readonly SelectionCountKey  = Model.RegisterReadOnlyProperty<number>(Board, 'SelectionCount',  0, MetaData.None);
 
     // ---- From this refactor: behavior opt-ins ---------------------
-    public static readonly AlignmentGuidesEnabledKey  = Model.RegisterProperty<boolean>(Diagram, 'AlignmentGuidesEnabled',  false, MetaData.None);
-    public static readonly SelectionResizeEnabledKey  = Model.RegisterProperty<boolean>(Diagram, 'SelectionResizeEnabled',  false, MetaData.None);
-    public static readonly ElevationSelectionEnabledKey = Model.RegisterProperty<boolean>(Diagram, 'ElevationSelectionEnabled', false, MetaData.None);
+    public static readonly AlignmentGuidesEnabledKey  = Model.RegisterProperty<boolean>(Board, 'AlignmentGuidesEnabled',  false, MetaData.None);
+    public static readonly SelectionResizeEnabledKey  = Model.RegisterProperty<boolean>(Board, 'SelectionResizeEnabled',  false, MetaData.None);
+    public static readonly ElevationSelectionEnabledKey = Model.RegisterProperty<boolean>(Board, 'ElevationSelectionEnabled', false, MetaData.None);
 
     // ---- From this refactor: 14 commands --------------------------
-    // Default impls owned by DiagramCommands collaborator. Consumers
+    // Default impls owned by BoardCommands collaborator. Consumers
     // OVERRIDE by writing their own RelayCommand to the DP (matches
-    // how the commands demo customizes today by subclassing DiagramVM).
+    // how the commands demo customizes today by subclassing BoardVM).
     public static readonly AlignLeftCommandKey            = ...;
     public static readonly AlignRightCommandKey           = ...;
     public static readonly AlignTopCommandKey             = ...;
@@ -267,8 +267,8 @@ export class Diagram extends Selector {
     public static readonly SelectionResizeCommandKey      = ...;   // for the resize-adorner handle to invoke
 
     // ---- From this refactor: multi-target format mirror -----------
-    public static readonly SelectionFormatFillKey   = Model.RegisterProperty<Brush | undefined>(Diagram, 'SelectionFormatFill',   undefined, MetaData.None);
-    public static readonly SelectionFormatStrokeKey = Model.RegisterProperty<Pen   | undefined>(Diagram, 'SelectionFormatStroke', undefined, MetaData.None);
+    public static readonly SelectionFormatFillKey   = Model.RegisterProperty<Brush | undefined>(Board, 'SelectionFormatFill',   undefined, MetaData.None);
+    public static readonly SelectionFormatStrokeKey = Model.RegisterProperty<Pen   | undefined>(Board, 'SelectionFormatStroke', undefined, MetaData.None);
 }
 ```
 
@@ -279,22 +279,22 @@ DPs) — they're framework-internal, not consumer-facing.
 ```ts
 constructor() {
     super();
-    this._commands       = new DiagramCommands(this);
+    this._commands       = new BoardCommands(this);
     this._boundsTracker  = new SelectionBoundsTracker(this);
     this._formatMirror   = new FormatMirror(this);
 }
 ```
 
-### 3.5 DiagramCommands collaborator
+### 3.5 BoardCommands collaborator
 
 Owns the 14 command implementations + their CanExecute predicates.
-Constructed with a back-ref to the Diagram so it can read
+Constructed with a back-ref to the Board so it can read
 `SelectedItems` + write to the public Command DPs.
 
 ```ts
-// src/framework/diagram/collaborators/diagram-commands.ts
-export class DiagramCommands {
-    constructor(private readonly diagram: Diagram) {
+// src/framework/board/collaborators/board-commands.ts
+export class BoardCommands {
+    constructor(private readonly board: Board) {
         this.installAll();
     }
 
@@ -305,11 +305,11 @@ export class DiagramCommands {
         const canUngroup    = () => this.countSelectedGroups() >= 1;
         const canCombine    = () => this.countSelectedWithGeometry() >= 2;
 
-        // Write to the Diagram's Command DPs through the privileged
+        // Write to the Board's Command DPs through the privileged
         // set_property_value_with_key — these are read-only-with-default
         // (consumers can OVERRIDE by writing their own RelayCommand,
         // which clobbers the default).
-        this.diagram._setCommandDefault(Diagram.AlignLeftCommandKey,
+        this.board._setCommandDefault(Board.AlignLeftCommandKey,
             new RelayCommand(() => alignLeft(this.collectSelected()), canAlign,
                 { Text: 'Align Left', Description: '...' }));
         // ... and 13 more
@@ -322,24 +322,24 @@ export class DiagramCommands {
 ```
 
 The command implementations are pure functions in
-`src/framework/diagram/commands/{align,distribute,group-ops,combine}.ts`
-operating on `IFigure[]`. Same math as today's `DiagramVM.AlignLeft()`
+`src/framework/board/commands/{align,distribute,group-ops,combine}.ts`
+operating on `IFigure[]`. Same math as today's `BoardVM.AlignLeft()`
 etc., extracted from the kitchen-sink VM into pure helpers.
 
 ### 3.6 SelectionBoundsTracker collaborator
 
-Subscribes to `Diagram.SelectionChanged` and to each selected item's
+Subscribes to `Board.SelectionChanged` and to each selected item's
 `Left` / `Top` / `Width` / `Height` PropertyChanged. Recomputes
-`(SelectionLeft, Top, Width, Height, Count)` and pushes to the Diagram's
+`(SelectionLeft, Top, Width, Height, Count)` and pushes to the Board's
 read-only DPs via the privileged-set hatch.
 
 ```ts
-// src/framework/diagram/collaborators/selection-bounds-tracker.ts
+// src/framework/board/collaborators/selection-bounds-tracker.ts
 export class SelectionBoundsTracker {
     private readonly memberListeners = new Map<IFigure, () => void>();
 
-    constructor(private readonly diagram: Diagram) {
-        diagram.AddSelectionChangedListener(() => this.resubscribe());
+    constructor(private readonly board: Board) {
+        board.AddSelectionChangedListener(() => this.resubscribe());
     }
 
     private resubscribe(): void {
@@ -347,7 +347,7 @@ export class SelectionBoundsTracker {
         for (const detach of this.memberListeners.values()) detach();
         this.memberListeners.clear();
         // Attach to current selection's geometry DPs
-        for (const item of this.diagram.SelectedItems) {
+        for (const item of this.board.SelectedItems) {
             if (!isIFigure(item)) continue;
             // Left / Top / Width / Height — recompute on any change
             const recompute = () => this.recomputeBounds();
@@ -359,16 +359,16 @@ export class SelectionBoundsTracker {
     }
 
     private recomputeBounds(): void {
-        const items = [...this.diagram.SelectedItems].filter(isIFigure);
+        const items = [...this.board.SelectedItems].filter(isIFigure);
         if (items.length === 0) {
-            this.diagram._setSelectionBounds(0, 0, 0, 0, 0);
+            this.board._setSelectionBounds(0, 0, 0, 0, 0);
             return;
         }
         const minLeft = Math.min(...items.map(i => i.Left));
         const minTop  = Math.min(...items.map(i => i.Top));
         const maxRight  = Math.max(...items.map(i => i.Left + i.Width));
         const maxBottom = Math.max(...items.map(i => i.Top  + i.Height));
-        this.diagram._setSelectionBounds(minLeft, minTop, maxRight - minLeft, maxBottom - minTop, items.length);
+        this.board._setSelectionBounds(minLeft, minTop, maxRight - minLeft, maxBottom - minTop, items.length);
     }
 }
 ```
@@ -379,15 +379,15 @@ properties on Model).
 
 ### 3.7 FormatMirror collaborator
 
-Seeds `Diagram.SelectionFormatFill` / `SelectionFormatStroke` from the
+Seeds `Board.SelectionFormatFill` / `SelectionFormatStroke` from the
 first selected item's Fill / Stroke on selection change; broadcasts
 edits made to those DPs back to every selected item. Same machinery
-as today's `DiagramVM.FormatFill` / `FormatStroke` but extracted.
+as today's `BoardVM.FormatFill` / `FormatStroke` but extracted.
 
 The "fill" side is straightforward (Brush replacement). The "stroke"
 side is Pen-shaped — broadcast COPIES the Pen's property values onto
 each member's own Pen (preserving per-item Pen identity, per the
-demo's existing comment at `diagram-vm.mjs:524-535`).
+demo's existing comment at `board-vm.mjs:524-535`).
 
 Duck-types on a `IFillable { Fill: Brush }` / `IStrokable {
 Stroke: Pen }` interface so consumers whose VMs don't have a
@@ -397,10 +397,10 @@ fill/stroke skip the broadcast silently.
 
 The "clicking any entity walks the Parent chain to the topmost
 ancestor and only THAT becomes IsSelected=true" rule. Promoted from
-the demo's `attachSelectionBridge` in `diagram.mjs:63-118`.
+the demo's `attachSelectionBridge` in `board.mjs:63-118`.
 
-Auto-attached when `Diagram.ElevationSelectionEnabled = true`.
-Listens to `Diagram.SelectionChanged`; for each item, walks
+Auto-attached when `Board.ElevationSelectionEnabled = true`.
+Listens to `Board.SelectionChanged`; for each item, walks
 `Parent`-chain via `topLevelOf()`; sets `IsSelected = true` on the
 root, `IsSelected = false` on everything else in the same root's
 subtree.
@@ -411,7 +411,7 @@ grouping don't pay for the Parent walk).
 ### 3.9 Toolbox + drop receiver
 
 Promotes the `attachCanvasDropBehavior` from
-[demo/.../behaviors/canvas-drop-behavior.mjs](https://github.com/pragmatic-tech-ai/mural/blob/main/demo/demos/diagram/behaviors/canvas-drop-behavior.mjs):
+[demo/.../behaviors/canvas-drop-behavior.mjs](https://github.com/pragmatic-tech-ai/mural/blob/main/demo/demos/board/behaviors/canvas-drop-behavior.mjs):
 
 ```ts
 class Toolbox extends ItemsControl {
@@ -423,11 +423,11 @@ class ToolboxItem extends ContentControl {
     static DragDataKey = ...;   // what gets put on the DataObject during drag
 }
 
-// Behavior: Diagram + Toolbox become a pair. The Toolbox's drag-source
-// items emit a DataObject; the Diagram (when its DropReceiver attached
-// property is true) consumes the drop and invokes Diagram.OnItemDropped
+// Behavior: Board + Toolbox become a pair. The Toolbox's drag-source
+// items emit a DataObject; the Board (when its DropReceiver attached
+// property is true) consumes the drop and invokes Board.OnItemDropped
 // callback so the consumer can materialize a new entity.
-function attachToolboxDropBehavior(diagram: Diagram, onDrop: (data, point) => void): () => void;
+function attachToolboxDropBehavior(board: Board, onDrop: (data, point) => void): () => void;
 ```
 
 Per-demo wiring stays trivial: consumer provides the `onDrop`
@@ -437,12 +437,12 @@ into their own VM's shape.
 ### 3.10 Adorners
 
 Both adorners promote essentially as-is, just with the demo-side
-"reach into DiagramVM" patterns replaced with "read framework-side
-DPs on Diagram":
+"reach into BoardVM" patterns replaced with "read framework-side
+DPs on Board":
 
 - **`SelectionResizeAdorner`** — 8-handle bbox resize. Reads
-  `Diagram.SelectionLeft/Top/Width/Height` for bbox position; writes back
-  via `Diagram.SelectionResizeCommand` (which delegates to a per-item
+  `Board.SelectionLeft/Top/Width/Height` for bbox position; writes back
+  via `Board.SelectionResizeCommand` (which delegates to a per-item
   resize on the selected IFigures). Auto-mounted into the SCP's
   `AdornerLayer` when `SelectionResizeEnabled = true`.
 - **`AlignmentGuidesAdorner`** + **`AlignmentGuidesBehavior`** —
@@ -460,20 +460,20 @@ demo bootstrap. Phase N deletes the old VMs.
 
 | Phase | What lands | Demo state | Verification |
 |---|---|---|---|
-| **A** | Rename `DiagramNode` → `Figure` + file `diagram-node.ts` → `figure.ts`. Re-export `DiagramNode` alias for back-compat. (Width/Height NOT added — Visual already provides them; spec correction noted in § 3.2.) | Untouched (uses alias) | All `framework/diagram/tests/*` pass + diagram demo runs visually |
+| **A** | Rename `BoardNode` → `Figure` + file `board-node.ts` → `figure.ts`. Re-export `BoardNode` alias for back-compat. (Width/Height NOT added — Visual already provides them; spec correction noted in § 3.2.) | Untouched (uses alias) | All `framework/board/tests/*` pass + board demo runs visually |
 | **B** | New `Group` control with bbox-derive + rigid translate. No demo use yet. | Untouched | `group.test.ts` — synthetic 3-member Group, drag, bbox follows |
-| **C** | `SelectionBoundsTracker` collaborator + `SelectionLeft/Top/Width/Height/Count` DPs on Diagram | Untouched | `selection-bounds.test.ts`: synthetic 3-node selection, assert bbox math |
-| **D** | `commands/align.ts` pure helpers + `Diagram.AlignLeft/Right/Top/Middle/CenterCommand` DPs + `DiagramCommands` collaborator skeleton | Untouched (`DiagramVM.AlignLeftCommand` still runs) | `align-commands.test.ts`: 3-node fixtures × 5 alignments |
-| **E** | `commands/distribute.ts` + `Diagram.DistributeHorizontal/Vertical` DPs | Untouched | `distribute-commands.test.ts` |
-| **F** | `commands/group-ops.ts` + `Diagram.Group/UngroupCommand` DPs | Untouched | `group-ops.test.ts`: synthetic group/ungroup; nested-group invariants |
-| **G** | `commands/combine.ts` + `Diagram.CombineUnion/Intersect/Subtract/ExcludeCommand` DPs (wraps §19 boolean ops) | Untouched | `combine-commands.test.ts` |
-| **H** | `AlignmentGuidesBehavior` + `AlignmentGuidesAdorner` promoted. `Diagram.AlignmentGuidesEnabled` DP. Auto-mount logic. | Untouched | `alignment-guides.test.ts`: synthetic drag, assert guide positions |
-| **I** | `SelectionResizeAdorner` promoted. `Diagram.SelectionResizeEnabled` DP. `SelectionResizeCommand`. | Untouched | `selection-resize.test.ts`: synthetic resize, assert bbox + per-item scale |
-| **J** | `FormatMirror` collaborator + `Diagram.SelectionFormatFill/Stroke` DPs | Untouched | `format-mirror.test.ts`: selection seed + edit broadcast |
+| **C** | `SelectionBoundsTracker` collaborator + `SelectionLeft/Top/Width/Height/Count` DPs on Board | Untouched | `selection-bounds.test.ts`: synthetic 3-node selection, assert bbox math |
+| **D** | `commands/align.ts` pure helpers + `Board.AlignLeft/Right/Top/Middle/CenterCommand` DPs + `BoardCommands` collaborator skeleton | Untouched (`BoardVM.AlignLeftCommand` still runs) | `align-commands.test.ts`: 3-node fixtures × 5 alignments |
+| **E** | `commands/distribute.ts` + `Board.DistributeHorizontal/Vertical` DPs | Untouched | `distribute-commands.test.ts` |
+| **F** | `commands/group-ops.ts` + `Board.Group/UngroupCommand` DPs | Untouched | `group-ops.test.ts`: synthetic group/ungroup; nested-group invariants |
+| **G** | `commands/combine.ts` + `Board.CombineUnion/Intersect/Subtract/ExcludeCommand` DPs (wraps §19 boolean ops) | Untouched | `combine-commands.test.ts` |
+| **H** | `AlignmentGuidesBehavior` + `AlignmentGuidesAdorner` promoted. `Board.AlignmentGuidesEnabled` DP. Auto-mount logic. | Untouched | `alignment-guides.test.ts`: synthetic drag, assert guide positions |
+| **I** | `SelectionResizeAdorner` promoted. `Board.SelectionResizeEnabled` DP. `SelectionResizeCommand`. | Untouched | `selection-resize.test.ts`: synthetic resize, assert bbox + per-item scale |
+| **J** | `FormatMirror` collaborator + `Board.SelectionFormatFill/Stroke` DPs | Untouched | `format-mirror.test.ts`: selection seed + edit broadcast |
 | **K** | `Toolbox` control + `ToolboxDropBehavior` promoted. | Untouched | `toolbox-drop.test.ts`: simulated drop, callback fires with correct data |
-| **L** | **Diagram demo flips to new surface.** Delete demo-side `attachSelectionBridge`, behaviors/adorners, align/distribute/group/combine/resize/format methods on DiagramVM. Markup switches to `Diagram.AlignLeftCommand=$Diagram.AlignLeftCommand` etc. | DiagramVM shrinks from 1483 LOC to ~80 (Save / Load / Status / seed) | Diagram demo runs identically; all framework tests still pass |
-| **M** | **Commands demo migrated.** `CommandsVM` no longer extends `DiagramVM`. Brings its own VM with Status + custom command overrides written to `Diagram.AlignLeftCommand` etc. | `commands` demo runs identically | Commands demo tests pass; framework tests pass |
-| **N** | Delete `diagram-vm.mjs`'s legacy classes (`ShapeNodeVM`, `GroupVM`, `topLevelOf` re-export). Remove `DiagramNode` alias from `figure.ts`. | Demo files trimmed; no residual cruft | Build clean; no broken imports |
+| **L** | **Board demo flips to new surface.** Delete demo-side `attachSelectionBridge`, behaviors/adorners, align/distribute/group/combine/resize/format methods on BoardVM. Markup switches to `Board.AlignLeftCommand=$Board.AlignLeftCommand` etc. | BoardVM shrinks from 1483 LOC to ~80 (Save / Load / Status / seed) | Board demo runs identically; all framework tests still pass |
+| **M** | **Commands demo migrated.** `CommandsVM` no longer extends `BoardVM`. Brings its own VM with Status + custom command overrides written to `Board.AlignLeftCommand` etc. | `commands` demo runs identically | Commands demo tests pass; framework tests pass |
+| **N** | Delete `board-vm.mjs`'s legacy classes (`ShapeNodeVM`, `GroupVM`, `topLevelOf` re-export). Remove `BoardNode` alias from `figure.ts`. | Demo files trimmed; no residual cruft | Build clean; no broken imports |
 
 Phases A-K are pure additions (framework surface grows; demo
 unaffected). Phase L is the demo flip (the satisfying "delete 1400
@@ -487,7 +487,7 @@ is gnarlier than expected).
 
 ## 5. Consumer migration — what commands demo loses
 
-The `commands` demo today does three things with `DiagramVM` /
+The `commands` demo today does three things with `BoardVM` /
 `ShapeNodeVM` that need rewriting at Phase M:
 
 1. **Subclasses `ShapeNodeVM` to override default Fill / Label.** With
@@ -495,21 +495,21 @@ The `commands` demo today does three things with `DiagramVM` /
    not the data class), the commands demo brings its own VM. The
    pattern stays similar — `OverrideMetadata` on the demo's own VM class
    for default-value overrides — just no framework superclass.
-2. **Subclasses `DiagramVM` as `CommandsVM`.** With `DiagramVM` gone,
+2. **Subclasses `BoardVM` as `CommandsVM`.** With `BoardVM` gone,
    the commands demo brings its own VM with whatever per-demo state
    it needs (Status text, custom command implementations). The
    custom Align commands (which today override the inherited
    `_align(mode)` method) become: the demo creates its own
    RelayCommand instances and writes them to
-   `Diagram.AlignLeftCommandKey` etc., shadowing the framework's
+   `Board.AlignLeftCommandKey` etc., shadowing the framework's
    defaults.
-3. **Reads `DiagramVM.StatusKey`.** Status text was demo affordance;
+3. **Reads `BoardVM.StatusKey`.** Status text was demo affordance;
    stays on whatever the consumer's VM exposes. Markup binding
    `Status=$Status` re-points to the demo's own DP, not a framework
    one.
 
 Net effect on `commands-vm.mjs`: shrinks from 235 LOC to ~80, in
-roughly the same shape as the (post-refactor) diagram-vm.mjs.
+roughly the same shape as the (post-refactor) board-vm.mjs.
 
 ## 6. Test plan
 
@@ -519,43 +519,43 @@ Per-phase test files listed in § 4. Cross-cutting fixtures + tests:
   `distribute.test.ts`, `group-ops.test.ts`, `combine.test.ts` all
   run against synthetic `IFigure[]` records — no Visual, no DOM,
   fast. Same shape as the §19 boolean-ops harness tests.
-- **Integration tests** in `diagram.test.ts` exercise the full
-  collaborator pipeline: create a Diagram with synthetic IFigure
-  items, select some, invoke a command via the Diagram's
+- **Integration tests** in `board.test.ts` exercise the full
+  collaborator pipeline: create a Board with synthetic IFigure
+  items, select some, invoke a command via the Board's
   `AlignLeftCommand` DP, assert positions changed correctly +
   SelectionBoundsTracker recomputed correctly.
-- **Demo smoke tests.** Both the diagram demo and the commands demo
+- **Demo smoke tests.** Both the board demo and the commands demo
   should have a one-shot smoke test that materializes the VM,
   invokes a few commands, asserts no exceptions. Lives outside
-  `src/framework/diagram/tests/` since it's demo-coupled.
+  `src/framework/board/tests/` since it's demo-coupled.
 
 ## 7. Open questions
 
-### 7.1. Where does Diagram._setCommandDefault() come from?
+### 7.1. Where does Board._setCommandDefault() come from?
 
-The Diagram's Command DPs need a "default writer" path that
-`DiagramCommands` uses at construction, and a "consumer override"
+The Board's Command DPs need a "default writer" path that
+`BoardCommands` uses at construction, and a "consumer override"
 path that wins when a consumer writes their own RelayCommand. Two
 shapes:
 
-- **(a)** Standard DP write from `DiagramCommands` (uses public
+- **(a)** Standard DP write from `BoardCommands` (uses public
   `set_property_value` like any other writer). Consumer writes also
   use `set_property_value`. Whoever writes last wins. The defaults
-  get set in the Diagram constructor; consumer code that runs
+  get set in the Board constructor; consumer code that runs
   later overrides cleanly.
 - **(b)** A separate "default" tier in `EffectiveValueDescriptor`
   that's lower priority than Local. Defaults sit at default-tier;
   consumer Local-tier writes naturally shadow them. Requires a new
   tier in EVD or a registered-default mechanism.
 
-Recommendation: **(a)** for simplicity. The Diagram constructor
+Recommendation: **(a)** for simplicity. The Board constructor
 runs before any consumer code that might override, so the
 last-writer-wins ordering naturally produces the right result.
 
 ### 7.2. Group selection chrome — fixed template vs configurable?
 
 Today's `GroupVM` bbox visual is a dashed border defined inline in
-the diagram demo's markup. The framework `Group` ships a default
+the board demo's markup. The framework `Group` ships a default
 template (dashed border via the standard `Border` chrome), but
 consumers may want different chrome (solid colored bbox, drop
 shadow, animated dash march).
@@ -569,7 +569,7 @@ DataTemplate just like any other Control. No special API surface.
 For a 100-node selection, the tracker installs 4 PropertyChanged
 listeners × 100 items = 400 listeners. Each node drag fires
 ~4 callbacks. Recompute is O(N) over the bbox math. For typical
-diagram sizes this is fine. For 10k-node selections it might bite.
+board sizes this is fine. For 10k-node selections it might bite.
 
 Recommendation: ship the naive O(N) version. Add a rAF-coalesce
 gate if profiling shows the bbox recompute is hot during drag.
@@ -585,12 +585,12 @@ Recommendation: ship free-form first (matches today's demo
 behavior); add Shift-constrains-uniform as a follow-up that's
 purely additive (one modifier check in the adorner's PointerMove).
 
-### 7.5. Should Diagram expose IFigure-typed SelectedFigures separately from SelectedItems?
+### 7.5. Should Board expose IFigure-typed SelectedFigures separately from SelectedItems?
 
-`Selector.SelectedItems` returns `unknown[]`. Most diagram
+`Selector.SelectedItems` returns `unknown[]`. Most board
 operations want `IFigure[]`. Options:
 
-- **(a)** Add `Diagram.SelectedFigures: readonly IFigure[]` (derived)
+- **(a)** Add `Board.SelectedFigures: readonly IFigure[]` (derived)
   that filters `SelectedItems` through `isIFigure()`.
 - **(b)** Consumers filter inline.
 
@@ -600,7 +600,7 @@ contract.
 
 ### 7.6. Re-export alias lifetime
 
-Phase A keeps `DiagramNode` as a re-export alias for `Figure`.
+Phase A keeps `BoardNode` as a re-export alias for `Figure`.
 Phase N removes it. Window between them = duration of phases B-M
 = probably 1-2 weeks of work. Acceptable transitional window for
 a private (in-tree) consumer. Alternative: remove the alias
@@ -612,17 +612,17 @@ Recommendation: keep the alias (cheap, isolates risk).
 
 ## 8. Explicitly out of scope
 
-- **Connector integration.** Framework Diagram with connectors is
+- **Connector integration.** Framework Board with connectors is
   designed separately in [connectors.md](connectors.md). The two
   refactors are independent; they both land in
-  `src/framework/diagram/` but don't touch each other's surface.
+  `src/framework/board/` but don't touch each other's surface.
 - **Save / Load / serialization.** Per-demo. The
   framework provides operations that mutate data; persistence is the
-  consumer's job. (No `Diagram.Serialize()` method.)
+  consumer's job. (No `Board.Serialize()` method.)
 - **Undo / redo.** Out of scope for v1; ICommand-based undo stack is a
   separate cross-cutting concern.
 - **The `commands` demo's status-bar pattern.** Status text remains
-  per-demo. Framework doesn't expose a `Diagram.Status` DP.
+  per-demo. Framework doesn't expose a `Board.Status` DP.
 - **Programmatic batched node-creation API.** Today's
   `vm.CreateNode(kind, x, y)` is per-demo (it knows about Kinds).
   Framework provides the container controls + commands; consumers

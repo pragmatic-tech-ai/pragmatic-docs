@@ -79,13 +79,13 @@ A layer inside a scrolled subtree → adorners scroll with the content. A layer 
 
 The two questions a layer placement answers:
 
-1. **Does the adorner move when its anchor moves?** Anchored to scrolled content → inner layer. Anchored to cursor / viewport / fixed corner → outer layer. Anchored inside a rotated/zoomed canvas (a Diagram) → inside that transform.
+1. **Does the adorner move when its anchor moves?** Anchored to scrolled content → inner layer. Anchored to cursor / viewport / fixed corner → outer layer. Anchored inside a rotated/zoomed canvas (a Board) → inside that transform.
 2. **Should the adorner be clipped by its container?** Layers inherit ancestor clips. An adorner inside a 100×100 clipped Border can't paint outside it; tooltips and dropdowns escape their host's clip by living at the outer layer.
 
 | Pattern | Layer |
 |---|---|
 | Insertion line riding scrolled list | inner (SCP) |
-| Selection rectangle around a Diagram shape | inner (Diagram canvas) |
+| Selection rectangle around a Board shape | inner (Board canvas) |
 | Resize handles on a selected element | inner |
 | Validation error chrome on a TextBox | inner if the TextBox is in a scroller, outer otherwise |
 | Drag ghost following the cursor | outer (root `AdornerDecorator`) |

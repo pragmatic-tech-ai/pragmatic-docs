@@ -1,11 +1,11 @@
-# Diagram Subsystem — API Guide
+# Board Subsystem — API Guide
 
-The diagram subsystem is mural's Visio-/drawio-style diagramming layer: a
+The board subsystem is mural's Visio-/drawio-style boardming layer: a
 canvas of movable **shapes** joined by routed **connectors**, with grouping,
 boolean combine, alignment, rich text, and persistence. This guide is the
 developer reference — the classes, dependency properties (DPs), methods,
 enums, and helper functions you wire together. For the end-user gesture
-reference, see [diagram-user-manual.md](diagram-user-manual.md).
+reference, see [board-user-manual.md](board-user-manual.md).
 
 Everything documented here is exported from
 `mural/framework`.
@@ -19,27 +19,27 @@ The subsystem separates the **model** (data you own and persist) from the
 
 | Layer | Type | Role |
 |-------|------|------|
-| Model | `DiagramDocument` | Owns the `Nodes` / `Connectors` collections, the mutation methods (`CreateNode`, `Group`, …) and `Save` / `Load`. (The palette lives in the framework `ToolboxRepository`, not the document.) |
-| View | `Diagram` | An `ItemsControl`/`Selector` that renders the nodes on a `Canvas`, handles selection, drag, resize, connector interaction, and raises gesture events. |
+| Model | `BoardDocument` | Owns the `Nodes` / `Connectors` collections, the mutation methods (`CreateNode`, `Group`, …) and `Save` / `Load`. (The palette lives in the framework `ToolboxRepository`, not the document.) |
+| View | `Board` | An `ItemsControl`/`Selector` that renders the nodes on a `Canvas`, handles selection, drag, resize, connector interaction, and raises gesture events. |
 | Items | `Figure`, `Group` | The canvas items themselves — visuals **and** data fused (no data/visual split, no per-item `DataTemplate`). |
 | Edges | `Connector` | Self-drawing routed lines mounted as siblings behind the figures. |
 
-A key design choice: **items in a `Diagram` are the `Figure`/`Group`
+A key design choice: **items in a `Board` are the `Figure`/`Group`
 instances directly.** `GetContainerForItemOverride` returns each item
 unchanged, so a node is its own container. This is why you set `Left`,
 `Fill`, `LabelText` etc. straight on the `Figure`.
 
 The view is glued to the model by **collaborators** (internal helpers the
-`Diagram` constructs) and by **mutation wiring** you attach once
-([§11](#11-mutation-wiring)). The `Diagram` never mutates data itself — it
+`Board` constructs) and by **mutation wiring** you attach once
+([§11](#11-mutation-wiring)). The `Board` never mutates data itself — it
 raises events (`ItemDropped`, `DeleteRequested`, `GroupRequested`, …) and a
-`DiagramMutator` (satisfied structurally by `DiagramDocument`) does the work.
+`BoardMutator` (satisfied structurally by `BoardDocument`) does the work.
 
 ### Rendering layers
 
-Nodes and connectors live in a two-layer panel (`DiagramLayersPanel`):
+Nodes and connectors live in a two-layer panel (`BoardLayersPanel`):
 connectors render first (behind), figures second (in front). The
-`DiagramLayer` attached property (`Connectors` / `Figures`) routes a child to
+`BoardLayer` attached property (`Connectors` / `Figures`) routes a child to
 the right layer.
 
 ---
@@ -51,11 +51,11 @@ the right layer.
 ```ts
 import { Application } from '@pragmatic-tech-ai/mural/runtime';
 import {
-    DiagramDocument, DiagramStorageKey, ConnectorEndpoint,
+    BoardDocument, BoardStorageKey, ConnectorEndpoint,
 } from '@pragmatic-tech-ai/mural/framework';
 
 // Storage is optional — omit it to run without persistence.
-const doc = new DiagramDocument(Application.current?.Services.get(DiagramStorageKey));
+const doc = new BoardDocument(Application.current?.Services.get(BoardStorageKey));
 
 const start = doc.CreateNode('rectangle', 60, 60);   // → Figure | null
 const end   = doc.CreateNode('ellipse',  240, 60);
@@ -67,22 +67,22 @@ doc.CreateConnector(
     new ConnectorEndpoint({ Node: end }));
 ```
 
-Hand `doc` to the view via `DataContext`. In markup the `Diagram` binds its
+Hand `doc` to the view via `DataContext`. In markup the `Board` binds its
 `ItemsSource` to `Nodes` and `Connectors` to `Connectors`.
 
 ### 2.2 Wiring the view in .mu
 
-The `Diagram` control needs its `ItemsSource`, a `Canvas`-based `ItemsPanel`,
+The `Board` control needs its `ItemsSource`, a `Canvas`-based `ItemsPanel`,
 and whichever feature toggles you want on. It **auto-wires its `Mutator`**
 from the `DataContext` when the context structurally implements
-`DiagramMutator` — `DiagramDocument` does, so no explicit `Mutator` binding is
+`BoardMutator` — `BoardDocument` does, so no explicit `Mutator` binding is
 needed.
 
 ```
-Diagram x:name="nodes"
+Board x:name="nodes"
     [ ItemsSource                  = $Nodes,
       Connectors                   = $Connectors,
-      ItemsPanel                   = @DiagramCanvasPanel,   // a Canvas ItemsPanelTemplate
+      ItemsPanel                   = @BoardCanvasPanel,   // a Canvas ItemsPanelTemplate
       SelectionMode                = Extended,
       AllowMarqueeSelection        = true,
       AlignmentGuidesEnabled       = true,
@@ -94,24 +94,24 @@ Diagram x:name="nodes"
       Focusable                    = true ]
 ```
 
-`DropReceiver = $Self` binds the drop target to *this* `Diagram` (the internal
+`DropReceiver = $Self` binds the drop target to *this* `Board` (the internal
 `ScrollViewer` is on the bubble path of every canvas drop). See the demo
-[diagram.mu](https://github.com/pragmatic-tech-ai/mural/blob/main/demo/demos/diagram/diagram.mu) for a full workspace (toolbox,
+[board.mu](https://github.com/pragmatic-tech-ai/mural/blob/main/demo/demos/board/board.mu) for a full workspace (toolbox,
 command toolbars, and format pane).
 
 ---
 
-## 3. DiagramDocument — the model
+## 3. BoardDocument — the model
 
-`extends Model`, and structurally satisfies `DiagramMutator`, `IDocument`, and
+`extends Model`, and structurally satisfies `BoardMutator`, `IDocument`, and
 `ICommandTarget`.
 
 ```ts
-new DiagramDocument(storage?: DiagramStorage)
+new BoardDocument(storage?: BoardStorage)
 ```
 
 Wires the `SaveCommand` / `LoadCommand` relay commands. The palette is no
-longer owned by the document — the `Diagram` control first-inits a
+longer owned by the document — the `Board` control first-inits a
 `ToolboxRepository` (a `Services` singleton) with a built-in Shapes page; see
 **Palette drops** below.
 
@@ -119,15 +119,15 @@ longer owned by the document — the `Diagram` control first-inits a
 
 | Property | Type | Default | Notes |
 |----------|------|---------|-------|
-| `Id` | `string` | `'diagram-<seq>'` | Document identity. |
-| `Title` | `string` | `'Diagram'` | |
+| `Id` | `string` | `'board-<seq>'` | Document identity. |
+| `Title` | `string` | `'Board'` | |
 | `IsDirty` | `boolean` | `false` | Set on mutation, cleared by `Save`/`Load`. |
-| `ActiveView` | `Diagram \| undefined` | `undefined` | Published so shell regions can bind the view's commands. |
-| `Inspector` | `DiagramInspector` | instance | Format-Shape inspector panel. |
+| `ActiveView` | `Board \| undefined` | `undefined` | Published so shell regions can bind the view's commands. |
+| `Inspector` | `BoardInspector` | instance | Format-Shape inspector panel. |
 | `Nodes` | `ObservableCollection<Figure \| Group>` | empty | The canvas items. |
 | `Connectors` | `ObservableCollection<Connector>` | empty | The edges. |
 | `Status` | `string` | `''` | Status-strip text. |
-| `Storage` | `DiagramStorage \| undefined` | ctor arg | Persistence backend. |
+| `Storage` | `BoardStorage \| undefined` | ctor arg | Persistence backend. |
 | `SaveCommand` / `LoadCommand` | `RelayCommand \| undefined` | instances | Bind to Save/Load buttons. |
 
 ### Methods
@@ -141,16 +141,16 @@ longer owned by the document — the `Diagram` control first-inits a
 | `Group(items)` | `void` | Wrap ≥2 top-level entries in a new `Group` (inserted at the lowest member index so it renders behind). |
 | `Ungroup(items)` | `void` | Dissolve each `Group`; members lift to the group's parent. |
 | `CombineSelection(items, mode)` | `void` | Boolean-merge ≥2 figures' geometries via `GeometryCombineMode`; replace inputs with one combined `Figure`. |
-| `Save()` | `void` | Serialize `Nodes` + `Connectors` to `Storage` (key `mural-diagram-state-v1`); clears `IsDirty`. |
+| `Save()` | `void` | Serialize `Nodes` + `Connectors` to `Storage` (key `mural-board-state-v1`); clears `IsDirty`. |
 | `Load()` | `void` | Deserialize from `Storage`; repopulates the collections; clears `IsDirty`. |
 
-Because `DiagramDocument` *is* a `DiagramMutator`, binding it as the
-`Diagram`'s `DataContext` is all it takes for toolbar/keyboard gestures to
+Because `BoardDocument` *is* a `BoardMutator`, binding it as the
+`Board`'s `DataContext` is all it takes for toolbar/keyboard gestures to
 flow into these methods.
 
 ---
 
-## 4. Diagram — the control
+## 4. Board — the control
 
 `extends Selector` (which extends `ItemsControl`). Construct it via markup
 (it has a default style); most of its surface is DPs you set once.
@@ -172,11 +172,11 @@ All default to `false` (or `undefined`) — opt in per feature:
 
 | Property | Type | Notes |
 |----------|------|-------|
-| `Connectors` | `ObservableCollection<Model> \| undefined` | Bound to `DiagramDocument.Connectors`. |
+| `Connectors` | `ObservableCollection<Model> \| undefined` | Bound to `BoardDocument.Connectors`. |
 | `ConnectorTemplate` | `DataTemplate \| undefined` | Optional template if connector items aren't `Connector`s already. |
 | `DropReceiver` | `Visual \| undefined` | The visual that accepts palette drops (usually `$Self`). |
-| `Mutator` | `DiagramMutator \| undefined` | Auto-wired from a structurally-matching `DataContext`. |
-| `PositionSnap` | `DiagramPositionSnap \| undefined` | `(rect) => rect` drag-snap callback (installed by the guides behavior). |
+| `Mutator` | `BoardMutator \| undefined` | Auto-wired from a structurally-matching `DataContext`. |
+| `PositionSnap` | `BoardPositionSnap \| undefined` | `(rect) => rect` drag-snap callback (installed by the guides behavior). |
 
 ### 4.3 Read-only selection state
 
@@ -210,12 +210,12 @@ directly (see the demo's four toolbars):
   `CombineSubtractCommand`, `CombineExcludeCommand` (≥2).
 
 Each command's `CanExecute` re-evaluates on selection change. The stable
-string ids for these commands are in `DiagramCommandId`
+string ids for these commands are in `BoardCommandId`
 ([§13](#13-enums)).
 
 ### 4.6 Events (listener add/remove pairs)
 
-The `Diagram` raises gestures; a mutator (or your own code) subscribes:
+The `Board` raises gestures; a mutator (or your own code) subscribes:
 
 | Add / Remove | Args | Fired when |
 |--------------|------|-----------|
@@ -226,8 +226,8 @@ The `Diagram` raises gestures; a mutator (or your own code) subscribes:
 | `…CombineRequestedListener` | `CombineRequestedArgs { Items, Mode }` | A Combine command. |
 | `…ConnectorCreatedListener` | `ConnectorCreatedArgs { Source, Target }` | A drag-create gesture completes over a target. |
 
-Normally you don't subscribe by hand — `attachStandardDiagramMutations`
-([§11](#11-mutation-wiring)) wires all six to a `DiagramMutator`.
+Normally you don't subscribe by hand — `attachStandardBoardMutations`
+([§11](#11-mutation-wiring)) wires all six to a `BoardMutator`.
 
 ### 4.7 Connector selection
 
@@ -239,11 +239,11 @@ Connectors carry their own selection track (separate from figure selection):
 
 ### <a id="collaborators"></a>Collaborators (internal)
 
-The `Diagram` constructs several internal helpers you don't call directly but
+The `Board` constructs several internal helpers you don't call directly but
 should know exist: **SelectionBoundsTracker** (maintains the read-only
 `Selection*` DPs), **FormatMirror** (seeds/broadcasts the format DPs),
 **SelectionReflector** (`ReflectSelectionToItems`), and
-**`DiagramConnectorsMaterializer`** (mounts each `Connector` — plus its caps
+**`BoardConnectorsMaterializer`** (mounts each `Connector` — plus its caps
 and label — into the connectors layer, keeping them in sync with the
 collection). Its only public surface is the `MaterializedVisuals` map.
 
@@ -329,7 +329,7 @@ interface CombinableShape { Geometry: PathGeometry | undefined; Left: number; To
 |----------|---------|
 | `buildNodeGeometry(kind, w, h)` | Scale the cached unit-1 geometry of `kind` to `w×h`. |
 | `scaleGeometry(source, w, h)` | Point-wise scale a unit-1 geometry via a matrix. |
-| `translateGeometry(geom, dx, dy)` | Translate a geometry in diagram space. |
+| `translateGeometry(geom, dx, dy)` | Translate a geometry in board space. |
 | `normalizeToUnit(geom)` | Reduce an arbitrary geometry to unit-1 form + bbox/position. |
 | `mergeShapes(nodes, mode)` | Boolean-combine N shapes (`GeometryCombineMode`) into one `NormalizedGeometry`. |
 
@@ -581,17 +581,17 @@ Arrow, Filled Arrow, Open/Filled Circle, Diamond) — bind it to a
 
 ## 10. Connector behaviors
 
-Attach these to a `Diagram` for interactive connector editing (they're driven
+Attach these to a `Board` for interactive connector editing (they're driven
 automatically when `ConnectorInteractionsEnabled = true`, but the classes are
 public if you drive them yourself).
 
 ### 10.1 Create
 
 ```ts
-const { behavior, detach } = attachConnectorCreate(diagram);
+const { behavior, detach } = attachConnectorCreate(board);
 ```
 
-`ConnectorCreateBehavior(diagram)` — a drag-create state machine.
+`ConnectorCreateBehavior(board)` — a drag-create state machine.
 `IsActive`, `TransientConnector` (getters). `BeginCreate(sourceFigure,
 sourceSide, cursor)`, `UpdateCursor(cursor)`, `EndCreate(targetFigure,
 targetSide)` (fires `ConnectorCreated`), `Abort()`.
@@ -614,12 +614,12 @@ helper: `segmentIsHorizontal(a, b)`.
 
 ## 11. Mutation wiring
 
-The `Diagram` never edits data; it raises events and a `DiagramMutator`
+The `Board` never edits data; it raises events and a `BoardMutator`
 mutates. Wire the two together once:
 
 ```ts
-import { attachStandardDiagramMutations } from '@pragmatic-tech-ai/mural/framework';
-const detach = attachStandardDiagramMutations(diagram, doc);   // doc is a DiagramMutator
+import { attachStandardBoardMutations } from '@pragmatic-tech-ai/mural/framework';
+const detach = attachStandardBoardMutations(board, doc);   // doc is a BoardMutator
 ```
 
 This subscribes all six gesture events (`ItemDropped`, `DeleteRequested`,
@@ -627,7 +627,7 @@ This subscribes all six gesture events (`ItemDropped`, `DeleteRequested`,
 to the matching mutator methods and returns a detach thunk.
 
 ```ts
-interface DiagramMutator {
+interface BoardMutator {
     Group(items): void;
     Ungroup(items): void;
     CombineSelection(items, mode): void;
@@ -639,16 +639,16 @@ interface DiagramMutator {
 }
 ```
 
-`DiagramDocument` implements this surface, so the `Diagram` **auto-wires** its
+`BoardDocument` implements this surface, so the `Board` **auto-wires** its
 `Mutator` from the `DataContext` — you often don't call
-`attachStandardDiagramMutations` explicitly at all.
+`attachStandardBoardMutations` explicitly at all.
 
 ### Palette drops
 
-`attachCanvasDropBehavior(receiver, diagram)` attaches a drag-drop listener to
+`attachCanvasDropBehavior(receiver, board)` attaches a drag-drop listener to
 `receiver` (a `Border`/`ScrollViewer`), translating host coordinates to
 canvas-local, accepting data that carries `TOOLBOX_ITEM_FORMAT`, and firing
-`Diagram.ItemDropped`. Returns a detach thunk. The drag payload carries the
+`Board.ItemDropped`. Returns a detach thunk. The drag payload carries the
 dropped **item id**; `attach-standard-mutations` looks the id up in the
 `ToolboxRepository` and calls the item's registered `IToolboxDropFactory` (the
 shape factory delegates to `mutator.CreateNode`). The dropped node lands offset
@@ -665,7 +665,7 @@ interface ItemDroppedArgs { Data: DataObject; Position: Point }  // Position is 
 The palette is a framework subsystem, resolved from `Application.current.Services`:
 
 - `ToolboxRepository` (`ToolboxRepository.Key`) holds `ToolboxPage`s of
-  `ToolboxItem`s. The `Diagram` control first-inits it (idempotent) with a
+  `ToolboxItem`s. The `Board` control first-inits it (idempotent) with a
   built-in **Shapes** page from `SHAPE_CATALOG`.
 - Each `ToolboxItem` carries a `ToolboxVisualDescriptor` (`{ ResolverKey, Key }`)
   and a `FactoryKey`. A per-kind `IToolboxVisualResolver` turns the descriptor
@@ -683,21 +683,21 @@ The palette is a framework subsystem, resolved from `Application.current.Service
 ## 12. Persistence
 
 ```ts
-interface DiagramStorage {
+interface BoardStorage {
     GetItem(key: string): string | null;
     SetItem(key: string, value: string): void;
 }
-const DiagramStorageKey: ServiceKey<DiagramStorage>;   // DI token
+const BoardStorageKey: ServiceKey<BoardStorage>;   // DI token
 ```
 
 Any `localStorage`/`sessionStorage`-compatible object satisfies
-`DiagramStorage`. Register your implementation on
-`Application.current.Services` under `DiagramStorageKey`, or pass one straight
-to the `DiagramDocument` constructor. `Save`/`Load` round-trip every node
+`BoardStorage`. Register your implementation on
+`Application.current.Services` under `BoardStorageKey`, or pass one straight
+to the `BoardDocument` constructor. `Save`/`Load` round-trip every node
 (position, geometry kind, fill/stroke, the full text spine — placement,
 transform, rich content, fields, auto-fit — and callout leader targets) and
 every connector (endpoints, waypoints, routing mode, label + position) under
-storage key `mural-diagram-state-v1`.
+storage key `mural-board-state-v1`.
 
 ---
 
@@ -713,8 +713,8 @@ storage key `mural-diagram-state-v1`.
 | `PortSide` | `N`, `S`, `E`, `W`, `Auto` |
 | `ConnectorEnd` | `Source`, `Target` |
 | `RoutingMode` (const obj) | `Straight`, `Orthogonal`, `Bezier` |
-| `DiagramCommandId` | `AlignLeft/Right/Top/Middle/Center`, `DistributeHorizontal/Vertical`, `Group`, `Ungroup`, `CombineUnion/Intersect/Subtract/Exclude` |
-| `DiagramLayer` | `Connectors`, `Figures` |
+| `BoardCommandId` | `AlignLeft/Right/Top/Middle/Center`, `DistributeHorizontal/Vertical`, `Group`, `Ungroup`, `CombineUnion/Intersect/Subtract/Exclude` |
+| `BoardLayer` | `Connectors`, `Figures` |
 
 Members carry explicit string values (e.g. `TextPlacement.Bottom ===
 'bottom'`) so the wire form is stable. `TextPlacement`, `TextAutoFit`,
@@ -733,10 +733,10 @@ Members carry explicit string values (e.g. `TextPlacement.Bottom ===
 | `polylineLength`, `pointAlongPolyline`, `nearestTOnPolyline` | Route geometry |
 | `connectorCapOptions` | Caps |
 | `attachConnectorCreate`, `attachConnectorEditAdorner`, `segmentIsHorizontal` | Connector behaviors |
-| `attachStandardDiagramMutations`, `attachCanvasDropBehavior` | Mutation wiring |
+| `attachStandardBoardMutations`, `attachCanvasDropBehavior` | Mutation wiring |
 
 ---
 
-*See also:* [diagram-user-manual.md](diagram-user-manual.md) for the
+*See also:* [board-user-manual.md](board-user-manual.md) for the
 end-user gesture and keyboard reference, and the working
-[diagram demo](https://github.com/pragmatic-tech-ai/mural/blob/main/demo/demos/diagram/) for a complete wiring.
+[board demo](https://github.com/pragmatic-tech-ai/mural/blob/main/demo/demos/board/) for a complete wiring.

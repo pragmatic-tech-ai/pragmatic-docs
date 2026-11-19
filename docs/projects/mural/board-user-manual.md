@@ -1,10 +1,10 @@
-# Diagrammer — User Manual
+# Boardmer — User Manual
 
-The Diagrammer is a Visio-/drawio-style canvas for drawing diagrams: drag
+The Boardmer is a Visio-/drawio-style canvas for drawing boards: drag
 shapes from a palette, connect them with routed lines, label them with rich
 text, and arrange, group, and combine them. This manual covers everything you
-do with the mouse and keyboard. Developers integrating the diagram control
-should read the [API guide](diagram-api-guide.md) instead.
+do with the mouse and keyboard. Developers integrating the board control
+should read the [API guide](board-api-guide.md) instead.
 
 ---
 
@@ -12,7 +12,7 @@ should read the [API guide](diagram-api-guide.md) instead.
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│  🏠 Diagrammer     <status text>                               │  ← header
+│  🏠 Boardmer     <status text>                               │  ← header
 ├──────────────────────────────────────────────────────────────┤
 │ Align ▸ | Distribute ▸ | Group ▸ | Combine ▸                  │  ← command toolbars
 ├──────────┬──────────────────────────────────────┬────────────┤
@@ -32,7 +32,7 @@ should read the [API guide](diagram-api-guide.md) instead.
   each toolbar's overflow chevron.
 - **Shapes palette** (left) — the shape library. Drag a tile onto the canvas.
   **Save** / **Load** buttons sit below it.
-- **Canvas** (centre) — where you build the diagram. It scrolls and grows as
+- **Canvas** (centre) — where you build the board. It scrolls and grows as
   you move shapes past its edges.
 - **Format Shape** pane (right) — edit the fill, stroke, and (for connectors)
   end caps of the current selection.
@@ -231,14 +231,14 @@ Deleting a shape also removes any connectors that were attached only to it.
 
 ## 13. Saving and loading
 
-- **Save** stores the whole diagram — every shape, its position, geometry,
+- **Save** stores the whole board — every shape, its position, geometry,
   colours, and text (including placement, rotation, rich formatting, fields,
   and callout targets), plus every connector (its ends, waypoints, routing, and
   label).
-- **Load** restores the last saved diagram.
+- **Load** restores the last saved board.
 
 Persistence uses whatever storage the app provides (typically the browser's
-local storage), so your diagram survives a reload.
+local storage), so your board survives a reload.
 
 ---
 
@@ -266,5 +266,5 @@ local storage), so your diagram survives a reload.
 
 ---
 
-*See also:* the [API guide](diagram-api-guide.md) for developers, and the live
-[diagram demo](https://github.com/pragmatic-tech-ai/mural/blob/main/demo/demos/diagram/) this manual describes.
+*See also:* the [API guide](board-api-guide.md) for developers, and the live
+[board demo](https://github.com/pragmatic-tech-ai/mural/blob/main/demo/demos/board/) this manual describes.

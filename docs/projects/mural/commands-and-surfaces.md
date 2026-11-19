@@ -187,7 +187,7 @@ The Menu control opens from a `MenuButton` (hamburger). Top-level
 items render in a vertical popup; submenus fly out to the right.
 
 ```
-[☰] Diagrammer
+[☰] Boardmer
  ↓
 ┌──────────────────┐                ┌────────────────────────────┐
 │ 📁 File       ▸  │ → hover Edit → │ ✂  Cut         Ctrl+X      │
@@ -417,30 +417,30 @@ RibbonButton  [LargeIcon=@deleteIcon, Text=@deleteText, Command=$DeleteCmd]
 ## 9. Demo plan — commands
 
 Dedicated demo exercising the three surfaces over a shared command set.
-Reuses the existing Diagram model from the diagram demo so the visual
+Reuses the existing Board model from the board demo so the visual
 context is familiar.
 
 ### Layout
 
 ```
 ┌───────────────────────────────────────────────────────────────────────────┐
-│  [☰] Diagrammer                                    [⃝ Classic  ⦿ Ribbon] │
+│  [☰] Boardmer                                    [⃝ Classic  ⦿ Ribbon] │
 ├───────────────────────────────────────────────────────────────────────────┤
 │  ━━ MODE: CLASSIC ━━                                                       │
 │  [📂 Open][💾 Save] │ [✂][📋][📄] │ [⊘ Del][⎘ Dup] │ [↶][↷]              │
 ├───────────────────────────────────────────────────────────────────────────┤
-│            [ Diagram canvas — NodeVMs; drag, click, marquee, etc. ]       │
+│            [ Board canvas — NodeVMs; drag, click, marquee, etc. ]       │
 └───────────────────────────────────────────────────────────────────────────┘
 
 Toggle to RIBBON →
 ┌───────────────────────────────────────────────────────────────────────────┐
-│  [☰] Diagrammer                                    [⃝ Classic  ⦿ Ribbon] │
+│  [☰] Boardmer                                    [⃝ Classic  ⦿ Ribbon] │
 ├───────────────────────────────────────────────────────────────────────────┤
 │  ━━ MODE: RIBBON ━━                                                        │
 │  Home   Insert   View   │ ██ Format ██  (only when HasSelection)           │
 │  [ribbon body for current tab]                                            │
 ├───────────────────────────────────────────────────────────────────────────┤
-│            [ Diagram canvas — unchanged ]                                  │
+│            [ Board canvas — unchanged ]                                  │
 └───────────────────────────────────────────────────────────────────────────┘
 ```
 

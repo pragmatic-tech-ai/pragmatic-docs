@@ -40,7 +40,7 @@ An app therefore reads:
 
 ```
 Application {
-    .modules: { DiagramModule; LayersModule; … }
+    .modules: { BoardModule; LayersModule; … }
     resources: { EditorShell x:root { } }
 }
 ```
@@ -216,7 +216,7 @@ A **`Capability`** is one rail destination:
 | `ServiceKey` | DI token of the service backing its content |
 
 ```
-module DiagramModule [ Name = "Diagram" ] {
+module BoardModule [ Name = "Board" ] {
     .services: { ShapesService  LayersService }        // → app-root container
     resources: { DataTemplate [DataType = ShapesService] { … } }
     Capability [ Name = "Shapes", ServiceKey = ShapesService ]

@@ -428,7 +428,7 @@ automatically.
 Shipped since this list was first written: `Ellipse`, `Line`,
 `StackPanel`, `Grid`, `WrapPanel`, `DockPanel`, `UniformGrid`,
 `Button`, `ScrollBar`, `TextBox`, `ComboBox`, `ListBox`, `TreeView`,
-`Slider`, `SpinEdit`, `Drawer`, `PageView`, `Diagram`.
+`Slider`, `SpinEdit`, `Drawer`, `PageView`, `Board`.
 
 Still on the [backlog](https://github.com/pragmatic-tech-ai/mural/blob/main/current-backlog.md):
 - **`Rectangle`** shape primitive — § 13.5.

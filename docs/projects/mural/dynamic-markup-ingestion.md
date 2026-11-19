@@ -46,7 +46,7 @@ must be **present and non-empty** or the import check rejects the symbol. So you
 map custom converters/types to any placeholder module path:
 
 ```ts
-const CONVERTER_MODULE = '../../diagram/services/icon-key-converter.js' // never actually imported
+const CONVERTER_MODULE = '../../board/services/icon-key-converter.js' // never actually imported
 const SYMBOLS = new Map([
     ...DEFAULT_SYMBOLS,
     ['IconKeyConverter', CONVERTER_MODULE],
@@ -120,10 +120,10 @@ import * as muralBasic from '@pragmatic-tech-ai/mural/basic'
 import * as muralEngine from '@pragmatic-tech-ai/mural/visual-engine'
 import { DataTemplate, type DataTemplateFactory } from '@pragmatic-tech-ai/mural/basic'
 import type { Visual } from '@pragmatic-tech-ai/mural/runtime'
-import { IconKeyConverter, ImageKeyConverter } from '../../diagram/services/icon-key-converter.js'
+import { IconKeyConverter, ImageKeyConverter } from '../../board/services/icon-key-converter.js'
 
 // Fake module string — unused by instantiate, but ensureImport needs it present.
-const CONVERTER_MODULE = '../../diagram/services/icon-key-converter.js'
+const CONVERTER_MODULE = '../../board/services/icon-key-converter.js'
 const SYMBOLS = new Map([
     ...DEFAULT_SYMBOLS,
     ['IconKeyConverter', CONVERTER_MODULE],
@@ -165,7 +165,7 @@ const ICON_BODY =
 
 // Tile context (toolbox tiles + preview): a raised chip behind the icon.
 const TILE_SOURCE = 'Border [ Fill = @SurfaceContainerHigh, CornerRadius = 6 ] {' + ICON_BODY + ' }'
-// Figure context (canvas nodes): transparent — the icon floats on the diagram.
+// Figure context (canvas nodes): transparent — the icon floats on the board.
 const FIGURE_SOURCE = 'Border [ CornerRadius = 6 ] {' + ICON_BODY + ' }'
 
 export function buildDefaultTemplate(ctx: Record<string, unknown>): DataTemplate {
@@ -176,7 +176,7 @@ export function buildFigureTemplate(ctx: Record<string, unknown>): DataTemplate 
 }
 ```
 
-The paired binding converters (`Plexus/.../diagram/services/icon-key-converter.ts`)
+The paired binding converters (`Plexus/.../board/services/icon-key-converter.ts`)
 each return `undefined` for the other's asset kind, which is what makes the
 overlay collapse to exactly one visible icon:
 

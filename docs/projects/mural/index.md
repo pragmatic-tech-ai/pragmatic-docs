@@ -2,7 +2,7 @@
 
 `@pragmatic-tech-ai/mural` — the UI and rendering framework: a retained-mode
 visual tree with a WPF-style property system, a declarative markup language
-(`.mu`), controls, theming, and a diagram subsystem. Built on
+(`.mu`), controls, theming, and a board subsystem. Built on
 **[TODL](../todl/)** and **[todl-runtime](../todl-runtime/)**.
 
 ## Getting started
@@ -54,15 +54,15 @@ Themes, schemes, fonts, and color expressions.
 - [Font System](fonts.md)
 - [Inline color routines](color-routines.md)
 
-## Diagram subsystem
+## Board subsystem
 
-The diagram control, its API, connectors, and design tokens.
+The board control, its API, connectors, and design tokens.
 
-- [Diagram Subsystem — API Guide](diagram-api-guide.md)
-- [Diagram control](diagram-control.md)
-- [Diagram connectors](connectors.md)
-- [Diagram Design Tokens — catalog](diagram-design-tokens.md)
-- [Diagrammer — User Manual](diagram-user-manual.md)
+- [Board Subsystem — API Guide](board-api-guide.md)
+- [Board control](board-control.md)
+- [Board connectors](connectors.md)
+- [Board Design Tokens — catalog](board-design-tokens.md)
+- [Boardmer — User Manual](board-user-manual.md)
 
 ## Services & build
 
